@@ -12,8 +12,9 @@ class coltxt:
                         "magenta":35, 
                         "cyan":36
                         }
+    
     def ctxt(self, colour:str, txt:str) -> str:
-        colour = colour.lower()
+        colour = colour.lower() # LOWER REMEMBER FOR DICT!
         if colour in self.colours:
             return f"\033[{self.colours.get(colour)}m{txt}\033[0m" #Return required ANSI format to colour text 
         return txt
@@ -21,13 +22,18 @@ class coltxt:
     def btxt(self, txt:str) -> str:
         return f"\033[1m{self.BOLD}\033[0m"
 
-
-
-x = coltxt()
-print(x.ctxt("magenta", "hi"))
-
 def term_size() -> tuple:
     x = os.get_terminal_size()
-    return x.coloumns, x.lines
+    return x.coloumns, x.lines # width, length
+
+#Variable
+ctext = coltxt()   
+
+
+
+w,_ = term_size()
+print(ctext.btxt("#"*w))
+
+
 
 
