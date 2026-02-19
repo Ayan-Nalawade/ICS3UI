@@ -20,11 +20,11 @@ class coltxt:
         return txt
     
     def btxt(self, txt:str) -> str:
-        return f"\033[1m{self.BOLD}\033[0m"
+        return f"\033[1m{txt}\033[0m"
 
 def term_size() -> tuple:
     x = os.get_terminal_size()
-    return x.coloumns, x.lines # width, length
+    return x.columns, x.lines # width, length
 
 #Variable
 ctext = coltxt()   
@@ -32,8 +32,12 @@ ctext = coltxt()
 
 
 w,_ = term_size()
+l1 = "Welcome to Airarret by Ayan"
+center = (w-l1-2)//2
 print(ctext.btxt("#"*w))
-print("h")
+print()
+
+
 
 
 
