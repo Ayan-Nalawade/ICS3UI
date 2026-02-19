@@ -2,26 +2,32 @@ import os, sys
 import time
 import random 
 
+class coltxt:
+    def __init__(self):
+        self.BOLD = "\033[1m"
+        self.colours = {"red":31, 
+                        "green":32, 
+                        "yellow":33, 
+                        "blue":34, 
+                        "magenta":35, 
+                        "cyan":36
+                        }
+    def ctxt(self, colour:str, txt:str) -> str:
+        colour = colour.lower()
+        if colour in self.colours:
+            return f"\033[{self.colours.get(colour)}m{txt}\033[0m" #Return required ANSI format to colour text 
+        return txt
+    
+    def btxt(self, txt:str) -> str:
+        return f"\033[1m{self.BOLD}\033[0m"
+
+
+
+x = coltxt()
+print(x.ctxt("magenta", "hi"))
+
 def term_size() -> tuple:
     x = os.get_terminal_size()
     return x.coloumns, x.lines
 
-def ctxt(colour:str, txt:str) -> str:
-    code:int = 0
-    colour = colour.lower()
-    if colour == "red":
-        code = 31
-    elif colour == "green":
-        code = 32
-    elif colour == "yellow":
-        code = 33
-    elif colour == "blue":
-        code = 34
-    elif colour == "magenta":
-        code = 35
-    elif colour == "cyan":
-        code = 36
-    return f"\033[{code}m{txt}\033[0m"
-
-print()
 
