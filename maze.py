@@ -10,7 +10,8 @@ class coltxt:
                         "yellow":33, 
                         "blue":34, 
                         "magenta":35, 
-                        "cyan":36
+                        "cyan":36,
+                        "bred": 91,
                         }
     
     def ctxt(self, colour:str, txt:str) -> str:
@@ -33,11 +34,13 @@ ctext = coltxt()
 
 w,_ = term_size()
 l1 = "Welcome to Airarret by Ayan"
-center = (w-l1-2)//2
 print(ctext.btxt("#"*w))
-print()
+print(f"{ctext.btxt("# ")}{ctext.ctxt("bred",l1)}{" "*(w-(4+len(l1)))}{ctext.btxt(" #")}")
+print(ctext.btxt("#"*w))
 
-
-
-
-
+print("\r Start Game? (yes/no): ", end="")
+x = input("").lower()
+if x in ['y', "yes", "ya"]:
+    print("Okay lets go :)")
+else:
+    print(ctext.btxt("Awh >:("))
