@@ -41,6 +41,6 @@ print(ctext.btxt("#"*w))
 print("\r Start Game? (yes/no): ", end="")
 x = input("").lower()
 if x in ['y', "yes", "ya"]:
-    print("Okay lets go :)")
+    print(ctext.ctxt("green","Okay lets go :)"))
 else:
     print(ctext.btxt("Awh >:("))
