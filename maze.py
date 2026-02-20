@@ -36,9 +36,8 @@ class GameState:
     
 
     def level1(self):
-        os.system("clear")
-
         while True:
+            os.system("clear")
             w,l = term_size()
             if w < 40:
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
