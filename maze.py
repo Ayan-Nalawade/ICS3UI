@@ -1,5 +1,5 @@
 import os, sys
-import time
+from time import sleep
 import random 
 
 class coltxt:
@@ -35,12 +35,21 @@ ctext = coltxt()
 w,_ = term_size()
 l1 = "Welcome to Airarret by Ayan"
 print(ctext.btxt("#"*w))
-print(f"{ctext.btxt("# ")}{ctext.ctxt("bred",l1)}{" "*(w-(4+len(l1)))}{ctext.btxt(" #")}")
+print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}")
 print(ctext.btxt("#"*w))
 
-print("\r Start Game? (yes/no): ", end="")
-x = input("").lower()
-if x in ['y', "yes", "ya"]:
-    print(ctext.ctxt("green","Okay lets go :)"))
-else:
-    print(ctext.btxt("Awh >:("))
+while True:
+    print(ctext.btxt("\r Start Game? (yes/no): "), end='')
+    x = input("").lower()
+
+    if x in ['y', "yes", "ya"]:
+        print(ctext.ctxt("green","Okay lets go :)"))
+        break
+    elif x in ['n', 'no', 'nah']:
+        os.system("clear")
+        print(ctext.btxt("Awh >:("))
+        sys.exit()
+    else:
+        os.system("clear")
+        print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
+        sleep(1)
