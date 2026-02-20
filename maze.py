@@ -39,7 +39,7 @@ class GameState:
         while True:
             os.system("clear")
             w,l = term_size()
-            if w < 40:
+            if w < 80:
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
             else:
                 break
