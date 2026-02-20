@@ -53,3 +53,4 @@ while True:
         os.system("clear")
         print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
         sleep(1)
+
