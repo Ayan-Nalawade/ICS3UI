@@ -42,11 +42,20 @@ class GameState:
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
             else:
                 break
+    def ancient_characters(self, text: str) -> None:
+        newtxt: str = ""
+        for e in text:
+            newtxt = newtxt+e
+            print(f"\r {newtxt}", end='')
+            sleep(0.1)
+        print()
+        
+
     
 
     def level1(self):
         self.resize(100)
-        print("")
+        self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE!"))
 
 
 
