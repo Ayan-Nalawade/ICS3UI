@@ -34,15 +34,20 @@ class GameState:
         self.path = "_"
         self.character = "🯅"
     
-
-    def level1(self):
+    def resize(self, size:int) -> None: # Ask the user to resize their terminal so game works properly
         while True:
             os.system("clear")
             w,l = term_size()
-            if w < 80:
+            if w < size:
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
             else:
                 break
+    
+
+    def level1(self):
+        self.resize(100)
+        print("")
+
 
 
 #Variable
