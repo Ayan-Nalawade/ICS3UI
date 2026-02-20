@@ -1,6 +1,6 @@
 import os, sys
 from time import sleep
-import random 
+import random
 
 class coltxt:
     def __init__(self):
@@ -42,12 +42,12 @@ class GameState:
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
             else:
                 break
-    def ancient_characters(self, text: str) -> None:
+    def ancient_characters(self, text: str, time:float) -> None:
         newtxt: str = ""
         for e in text:
             newtxt = newtxt+e
             print(f"\r {newtxt}", end='')
-            sleep(0.1)
+            sleep(time)
         print()
         
 
@@ -55,7 +55,23 @@ class GameState:
 
     def level1(self):
         self.resize(100)
-        self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE!"))
+        self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
+        os.system("clear")
+        self.ancient_characters(f"{self.path*20}{self.character}{self.path*20}{self.door} {self.door} {self.door}", 0.01)
+        self.ancient_characters(f"{' '*17}  You{' '*20}A  B  C", 0.01)
+
+        print("\n\n\n\n") # Spaces :)
+
+        self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you..."), 0.05)
+        while True:
+            usrin1 = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
+            if usrin1 not in ["a", "b", "c"]:
+                continue
+            else:
+                break
+        
+
+
 
 
 
