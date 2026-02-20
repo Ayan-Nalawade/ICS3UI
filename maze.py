@@ -27,6 +27,21 @@ def term_size() -> tuple:
     x = os.get_terminal_size()
     return x.columns, x.lines # width, length
 
+
+class GameState:
+    def __init__(self):
+        self.door = "🚪"
+        self.path = "_"
+        self.character = "🯅"
+    
+
+    def level1(self):
+        os.system("clear")
+        w,l = term_size()
+        while w < 4:
+            _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
+
+
 #Variable
 ctext = coltxt()   
 
@@ -54,3 +69,5 @@ while True:
         print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
         sleep(1)
 
+g = GameState()
+g.level1()
