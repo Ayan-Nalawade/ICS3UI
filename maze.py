@@ -54,6 +54,9 @@ class GameState:
     
 
     def level1(self):
+        global usrin1
+        usrin1 = ""
+
         self.resize(100)
         self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
         os.system("clear")
@@ -70,6 +73,12 @@ class GameState:
             else:
                 break
         
+        if 'a'==usrin1:
+            print("a")
+        elif 'b'==usrin1:
+            print("b")
+        elif 'c'==usrin1:
+            print('c')
 
 
 
