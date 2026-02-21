@@ -109,6 +109,7 @@ class GameState:
                 break
 
         if self.doorchoice == self.usrin:
+            os.system("clear")
             self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You have died. "))), 0.01)
         elif self.rc == self.usrin: # Second worst choice
             os.system("clear")
@@ -125,33 +126,36 @@ class GameState:
                 else:
                     os.system("clear")
                     if self.usrin == "yes":
-                        if random.randint(0,1) == 10:
+                        if random.randint(0,4) == 1:
+                            binomial_number = random.randint(0,5)
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
                             time.sleep(2)
                             os.system("clear")
                             print(ctext.itxt("A random little boy appears"))
-                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you?"), 0.03)
-                            self.ancient_characters(ctext.ctxt("green", "(You): He rob- That doesn't matter. Can you send me back?"), 0.03)
-                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): Yes, BUT you must solve a math problem for me. I must do this for my school"), 0.03)
-                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am given told to expand the binomial expression (a+{random.randint(0,5)})^2,"), 0.03)
-                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0)"), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you? "), 0.03)
+                            self.ancient_characters(ctext.ctxt("green", "(You): He rob- That doesn't matter. Can you send me back? "), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): Yes, BUT you must solve a math problem for me. I must do this for my school "), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am given told to expand the binomial expression (a+{binomial_number})^2, "), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0, for c, looking for the coefficient) "), 0.03)
 
                             print("\n\n\n")
 
                             while True:
-                                a1,b1,c1 = self.binomial_expansion()
+                                a1,b1,c1 = self.binomial_expansion(binomial_number)
+                                print(a1, b1, c1)
                                 valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
                                 valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
                                 valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
 
-                                if valuea == a1 & valueb == b1 & valuec == c1:
+                                if valuea == a1 and valueb == b1 and valuec == c1:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now !"), 0.03)
                                     break
                                 else:
-                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back"), 0.03)
+                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
                         else:
-                            self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch}. Vanishes"), 0.05)
-                            
+                            self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch.upper()}. Vanishes"), 0.05)
+                            time.sleep(2)
+
                         os.system("clear")
                         b = time.perf_counter() # End Timer
                         self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
@@ -160,6 +164,13 @@ class GameState:
 
                     break
             self.level1_scene2()
+        else:
+            self.ancient_characters(ctext.ctxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
+
+
+    def level1_scene3(self):
+        print("Hello world")
+
 
 
     
@@ -170,6 +181,8 @@ class GameState:
         self.level1_scene1()
 
         self.level1_scene2()
+
+        self.level1_scene3()
 
 
 
