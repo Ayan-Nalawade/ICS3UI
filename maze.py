@@ -1,5 +1,8 @@
+# Note to Mr.Schattman, using os.system("clear") to clear the terminal because CodeHS and VScode uses Linux, so theres no reason to check handling for windows, solaris or other systems
+
 import os, sys
 from time import sleep
+import time
 import random
 
 class coltxt:
@@ -24,6 +27,9 @@ class coltxt:
     
     def btxt(self, txt:str) -> str:
         return f"\033[1m{txt}\033[0m"
+    
+    def itxt(self, txt:str) -> str:
+        return f"\033[3m{txt}\033[0m"
 
 
 #Class Calls
@@ -40,14 +46,18 @@ class GameState:
         self.path = "_"
         self.character = "🯅"
         self.doorchoice = ""
+        self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
+        self.usrin = ""
 
-    def updatedoorchoice(self) -> str: #Door count to a max of 3 doors so only a,b,c required
+    def updatedoorchoice(self) -> tuple: #Door count to a max of 3 doors so only a,b,c required
         choices = ['a', 'b', 'c']
         n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter\
         x = random.randint(0,1) # Which door is bad after ghosts?
         self.doorchoice = choices[n]
         choices.remove(choices[n])
-        return str(choices[x])
+        badch = str(choices[x]) # Bad choice (second worst)
+        choices.remove(badch)
+        return badch, ''.join(choices)
 
     
     def resize(self, size:int) -> None: # Ask the user to resize their terminal so game works properly
@@ -67,15 +77,12 @@ class GameState:
         print()
         
 
-    
-
-    def level1(self):
-        rc = self.updatedoorchoice() # Tells which door has a darkness
-        global usrin
-        usrin = ""
-
-        self.resize(100)
+    def level1_scene1(self):
         self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
+        os.system("clear")
+
+    def level1_scene2(self):
+        a = time.perf_counter()
         os.system("clear")
         self.ancient_characters(f"{self.path*20}{self.character}{self.path*20}{self.door} {self.door} {self.door}", 0.01)
         self.ancient_characters(f"{' '*17}  You{' '*20}A  B  C", 0.01)
@@ -83,31 +90,60 @@ class GameState:
         print("\n\n\n\n") # Spaces :)
 
         self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you... "), 0.05)
+
+
         print(self.doorchoice)
-        print(rc)
+        print(self.rc)
         while True:
-            usrin = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
-            if usrin not in ["a", "b", "c"]:
+            self.usrin = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
+            if self.usrin not in ["a", "b", "c"]:
                 continue
             else:
                 break
 
-        os.system("clear")
-        if self.doorchoice == usrin:
-            self.ancient_characters((ctext.ctxt("yellow",(f"Door {usrin.upper()} had ghosts! You have died. "))), 0.01)
-        elif rc == usrin: # Second worst choice
+        if self.doorchoice == self.usrin:
+            self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You have died. "))), 0.01)
+        elif self.rc == self.usrin: # Second worst choice
+            os.system("clear")
             self.ancient_characters(ctext.ctxt("teal","You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
             self.ancient_characters(ctext.ctxt("teal","There is a light, you walk to the light and see a weary traveler "),0.05)
             print("\n\n\n") # Spam new lines for spaces
-            self.ancient_characters(ctext.ctxt("cyan","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel"),0.05)
+            self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel "),0.05)
             print("\n\n\n") # Spam new lines for spaces
+
             while True:
-                usrin = input(ctext.btxt("Your choice? (Yes/No): ")).lower()
-                if usrin not in ["yes", "no", "ya", "nah"]:
+                self.usrin = input(ctext.btxt("Your choice? (Yes/No): ")).lower()
+                if self.usrin not in ["yes", "no"]:
                     continue
                 else:
+                    os.system("clear")
+                    if self.usrin == "yes":
+                        if random.randint(0,1) == 10:
+                            self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
+                        else:
+                            self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch}. Vanishes"), 0.05)
+                            os.system("clear")
+                            b = time.perf_counter()
+                            self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
+                            sleep(2)
+                            os.system("clear")
+
                     break
-            
+            self.level1_scene2()
+
+
+    
+
+    def level1(self):
+        self.resize(100)
+
+        self.level1_scene1()
+
+        self.level1_scene2()
+
+
+
+
 
 
 
