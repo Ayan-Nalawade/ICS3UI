@@ -49,6 +49,13 @@ class GameState:
         self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
         self.usrin = ""
 
+    def binomial_expansion(self, number:int) -> tuple:
+        # Number will be the number an binomial expression that looks like this: (a+<number>)^2
+        A = 1
+        B = 2 * number
+        C = number ** 2
+        return (A, B, C)
+
     def updatedoorchoice(self) -> tuple: #Door count to a max of 3 doors so only a,b,c required
         choices = ['a', 'b', 'c']
         n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter\
@@ -82,7 +89,7 @@ class GameState:
         os.system("clear")
 
     def level1_scene2(self):
-        a = time.perf_counter()
+        a = time.perf_counter() # Start timer
         os.system("clear")
         self.ancient_characters(f"{self.path*20}{self.character}{self.path*20}{self.door} {self.door} {self.door}", 0.01)
         self.ancient_characters(f"{' '*17}  You{' '*20}A  B  C", 0.01)
@@ -120,13 +127,36 @@ class GameState:
                     if self.usrin == "yes":
                         if random.randint(0,1) == 10:
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
+                            time.sleep(2)
+                            os.system("clear")
+                            print(ctext.itxt("A random little boy appears"))
+                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you?"), 0.03)
+                            self.ancient_characters(ctext.ctxt("green", "(You): He rob- That doesn't matter. Can you send me back?"), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): Yes, BUT you must solve a math problem for me. I must do this for my school"), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am given told to expand the binomial expression (a+{random.randint(0,5)})^2,"), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0)"), 0.03)
+
+                            print("\n\n\n")
+
+                            while True:
+                                a1,b1,c1 = self.binomial_expansion()
+                                valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
+                                valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
+                                valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
+
+                                if valuea == a1 & valueb == b1 & valuec == c1:
+                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now !"), 0.03)
+                                    break
+                                else:
+                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back"), 0.03)
                         else:
                             self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch}. Vanishes"), 0.05)
-                            os.system("clear")
-                            b = time.perf_counter()
-                            self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
-                            sleep(2)
-                            os.system("clear")
+                            
+                        os.system("clear")
+                        b = time.perf_counter() # End Timer
+                        self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
+                        sleep(2)
+                        os.system("clear")
 
                     break
             self.level1_scene2()
