@@ -10,6 +10,7 @@ class coltxt:
                         "yellow":33, 
                         "blue":34, 
                         "magenta":35, 
+                        "teal":36,
                         "cyan":36,
                         "bred": 91,
                         }
@@ -40,12 +41,14 @@ class GameState:
         self.character = "🯅"
         self.doorchoice = ""
 
-    def updatedoorchoice(self) -> None: #Door count to a max of 3 doors so only a,b,c required
+    def updatedoorchoice(self) -> str: #Door count to a max of 3 doors so only a,b,c required
         choices = ['a', 'b', 'c']
-        n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter
+        n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter\
+        x = random.randint(0,1) # Which door is bad after ghosts?
         self.doorchoice = choices[n]
         choices.remove(choices[n])
-        
+        return str(choices[x])
+
     
     def resize(self, size:int) -> None: # Ask the user to resize their terminal so game works properly
         while True:
@@ -67,9 +70,9 @@ class GameState:
     
 
     def level1(self):
-        self.updatedoorchoice()
-        global usrin1
-        usrin1 = ""
+        rc = self.updatedoorchoice() # Tells which door has a darkness
+        global usrin
+        usrin = ""
 
         self.resize(100)
         self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
@@ -79,31 +82,42 @@ class GameState:
 
         print("\n\n\n\n") # Spaces :)
 
-        self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you..."), 0.05)
+        self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you... "), 0.05)
         print(self.doorchoice)
+        print(rc)
         while True:
-            usrin1 = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
-            if usrin1 not in ["a", "b", "c"]:
+            usrin = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
+            if usrin not in ["a", "b", "c"]:
                 continue
             else:
                 break
 
         os.system("clear")
-        if self.doorchoice == usrin1:
-            self.ancient_characters((ctext.ctxt("yellow",(f"Door {usrin1.upper()} had ghosts! You have died. "))), 0.01)
-        elif 'a'==usrin1:
-            print('a')
-        elif 'b'==usrin1:
-            print("b")
-        elif 'c'==usrin1:
-            print('c')
+        if self.doorchoice == usrin:
+            self.ancient_characters((ctext.ctxt("yellow",(f"Door {usrin.upper()} had ghosts! You have died. "))), 0.01)
+        elif rc == usrin: # Second worst choice
+            self.ancient_characters(ctext.ctxt("teal","You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
+            self.ancient_characters(ctext.ctxt("teal","There is a light, you walk to the light and see a weary traveler "),0.05)
+            print("\n\n\n") # Spam new lines for spaces
+            self.ancient_characters(ctext.ctxt("cyan","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel"),0.05)
+            print("\n\n\n") # Spam new lines for spaces
+            while True:
+                usrin = input(ctext.btxt("Your choice? (Yes/No): ")).lower()
+                if usrin not in ["yes", "no", "ya", "nah"]:
+                    continue
+                else:
+                    break
+            
+
+
+
 
 
 
 w,_ = term_size()
 l1 = "Welcome to Airarret by Ayan"
 print(ctext.btxt("#"*w))
-print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}")
+print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
 print(ctext.btxt("#"*w))
 
 while True:
