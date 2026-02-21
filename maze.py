@@ -13,6 +13,7 @@ class coltxt:
                         "cyan":36,
                         "bred": 91,
                         }
+
     
     def ctxt(self, colour:str, txt:str) -> str:
         colour = colour.lower() # LOWER REMEMBER FOR DICT!
@@ -22,6 +23,10 @@ class coltxt:
     
     def btxt(self, txt:str) -> str:
         return f"\033[1m{txt}\033[0m"
+
+
+#Class Calls
+ctext = coltxt()  
 
 def term_size() -> tuple:
     x = os.get_terminal_size()
@@ -33,6 +38,14 @@ class GameState:
         self.door = "🚪"
         self.path = "_"
         self.character = "🯅"
+        self.doorchoice = ""
+
+    def updatedoorchoice(self) -> None: #Door count to a max of 3 doors so only a,b,c required
+        choices = ['a', 'b', 'c']
+        n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter
+        self.doorchoice = choices[n]
+        choices.remove(choices[n])
+        
     
     def resize(self, size:int) -> None: # Ask the user to resize their terminal so game works properly
         while True:
@@ -54,6 +67,7 @@ class GameState:
     
 
     def level1(self):
+        self.updatedoorchoice()
         global usrin1
         usrin1 = ""
 
@@ -66,26 +80,23 @@ class GameState:
         print("\n\n\n\n") # Spaces :)
 
         self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you..."), 0.05)
+        print(self.doorchoice)
         while True:
             usrin1 = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
             if usrin1 not in ["a", "b", "c"]:
                 continue
             else:
                 break
-        
-        if 'a'==usrin1:
-            print("a")
+
+        os.system("clear")
+        if self.doorchoice == usrin1:
+            self.ancient_characters((ctext.ctxt("yellow",(f"Door {usrin1.upper()} had ghosts! You have died. "))), 0.01)
+        elif 'a'==usrin1:
+            print('a')
         elif 'b'==usrin1:
             print("b")
         elif 'c'==usrin1:
             print('c')
-
-
-
-
-
-#Variable
-ctext = coltxt()   
 
 
 
