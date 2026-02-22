@@ -44,7 +44,8 @@ class GameState:
     def __init__(self):
         self.door = "🚪"
         self.path = "_"
-        self.character = "🯅"
+        self.character = "🧍"
+        self.crab = "🦀x"
         self.doorchoice = ""
         self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
         self.usrin = ""
@@ -85,7 +86,9 @@ class GameState:
         
 
     def level1_scene1(self):
-        self.ancient_characters(ctext.btxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
+        self.ancient_characters(ctext.itxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
+        self.ancient_characters(ctext.itxt("Escape the cave without getting hurt "), 0.05)
+        time.sleep(2)
         os.system("clear")
 
     def level1_scene2(self):
@@ -111,10 +114,11 @@ class GameState:
         if self.doorchoice == self.usrin:
             os.system("clear")
             self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You have died. "))), 0.01)
+            sys.exit()
         elif self.rc == self.usrin: # Second worst choice
             os.system("clear")
-            self.ancient_characters(ctext.ctxt("teal","You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
-            self.ancient_characters(ctext.ctxt("teal","There is a light, you walk to the light and see a weary traveler "),0.05)
+            self.ancient_characters(ctext.itxt("You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
+            self.ancient_characters(ctext.itxt("There is a light, you walk to the light and see a weary traveler "),0.05)
             print("\n\n\n") # Spam new lines for spaces
             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel "),0.05)
             print("\n\n\n") # Spam new lines for spaces
@@ -126,7 +130,7 @@ class GameState:
                 else:
                     os.system("clear")
                     if self.usrin == "yes":
-                        if random.randint(0,4) == 1:
+                        if random.randint(0,1) == 1:
                             binomial_number = random.randint(0,5)
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
                             time.sleep(2)
@@ -135,8 +139,8 @@ class GameState:
                             self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you? "), 0.03)
                             self.ancient_characters(ctext.ctxt("green", "(You): He rob- That doesn't matter. Can you send me back? "), 0.03)
                             self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): Yes, BUT you must solve a math problem for me. I must do this for my school "), 0.03)
-                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am given told to expand the binomial expression (a+{binomial_number})^2, "), 0.03)
-                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0, for c, looking for the coefficient) "), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am told to expand the binomial expression (a+{binomial_number})^2, "), 0.03)
+                            self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0, for a,b,c, looking for the coefficient) "), 0.03)
 
                             print("\n\n\n")
 
@@ -153,7 +157,7 @@ class GameState:
                                 else:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
                         else:
-                            self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch.upper()}. Vanishes"), 0.05)
+                            self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch.upper()}. Vanishes "), 0.05)
                             time.sleep(2)
 
                         os.system("clear")
@@ -161,11 +165,19 @@ class GameState:
                         self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
                         sleep(2)
                         os.system("clear")
+                    else:
+                        self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hmm? No? I don't think you buddy "),0.05)
+                        print(ctext.itxt("The weary traveler stabs and robs you."))
+                        self.ancient_characters(ctext.itxt("You wake up to the same 3 doors. What? Was this a dream? "), 0.03)
+                        time.sleep(2)
+
+
 
                     break
             self.level1_scene2()
         else:
-            self.ancient_characters(ctext.ctxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
+            os.system("clear")
+            self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
 
 
     def level1_scene3(self):
@@ -194,7 +206,7 @@ class GameState:
 
 
 w,_ = term_size()
-l1 = "Welcome to Airarret by Ayan"
+l1= "Welcome to Airarret by Ayan"
 print(ctext.btxt("#"*w))
 print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
 print(ctext.btxt("#"*w))
