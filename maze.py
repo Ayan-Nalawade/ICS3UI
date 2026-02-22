@@ -45,7 +45,7 @@ class GameState:
         self.door = "🚪"
         self.path = "_"
         self.character = "🧍"
-        self.crab = "🦀x"
+        self.crab = "🦀"
         self.doorchoice = ""
         self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
         self.usrin = ""
@@ -181,7 +181,12 @@ class GameState:
 
 
     def level1_scene3(self):
-        print("Hello world")
+        mtrx = [[self.crab , self.crab , self.door],
+                [self.crab , self.crab , self.path],
+                [self.character , self.path , self.path]]
+        self.ancient_characters(mtrx[0], 0.05)
+        self.ancient_characters(mtrx[1], 0.05)
+        self.ancient_characters(mtrx[2], 0.05)
 
 
 
@@ -190,9 +195,9 @@ class GameState:
     def level1(self):
         self.resize(100)
 
-        self.level1_scene1()
+        # self.level1_scene1()
 
-        self.level1_scene2()
+        # self.level1_scene2()
 
         self.level1_scene3()
 
