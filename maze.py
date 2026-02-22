@@ -2,6 +2,7 @@
 
 import os, sys
 from time import sleep
+import numpy as np
 import time
 import random
 
@@ -179,14 +180,52 @@ class GameState:
             os.system("clear")
             self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
 
+    def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray:
 
-    def level1_scene3(self):
-        mtrx = [[self.crab , self.crab , self.door],
-                [self.crab , self.crab , self.path],
-                [self.character , self.path , self.path]]
-        self.ancient_characters(mtrx[0], 0.05)
-        self.ancient_characters(mtrx[1], 0.05)
-        self.ancient_characters(mtrx[2], 0.05)
+        return matrix
+    
+    def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
+        count = 0
+        row = ""
+        tmp =""
+        tmp2 = ""
+        for v in np.nditer(matrix):
+
+            tmp += f" {v} "
+            if count == 3:
+                tmp += "\n"
+                print(row)
+                print()
+                count = 0
+                row = ""
+                continue
+            if int(v) == 0:
+                row += f" {self.path} "
+                tmp2 += " v==0 \n "
+            elif int(v) == 1:
+                row += f" {self.character}"
+                tmp2 += " v==1 \n "
+            elif int(v) == 2:
+                row += f" {self.door}"
+                tmp2 += " v==2 \n "
+            else:
+                row += f" {self.crab} "
+                tmp2 += " v==3 \n "
+            print(count)
+            count += 1
+
+        print(tmp)
+        print(tmp2)
+
+
+    def level1_scene3(self): 
+        # 3 is crab, 2 is door, 1 is person, 0 is blank
+        mtrx = np.array([[3,3,2],
+                         [3,3,0],
+                         [1,0,0]
+                         ])
+        
+        self.level1_scene3_prnt(mtrx)
 
 
 
