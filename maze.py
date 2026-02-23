@@ -208,6 +208,11 @@ class GameState:
         if skipr1 == True and skipr2 == True:
             return matrix
         # Handle if the player is in the middle of the matrix (position 1); If character (1) in the middle, no crab can move
+        # Example state [ _ 1 _ ]
+
+        # Example state [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ] 
+        
+
 
         
         
