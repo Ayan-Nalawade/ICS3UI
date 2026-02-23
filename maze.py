@@ -200,13 +200,10 @@ class GameState:
             available_blank1 -= 1
         if 1 in uprow1:
             available_blank1 -= 1
-        for each in enumerate(uprow1):
-            if uprow1[each]==3:
-                try:
-                    if uprow1[each-1] == 0:
-                        uprow1[each-1] = 3
-                        continue
-                    # It could still mean the path as a character
+        
+
+            
+                
 
 
         
