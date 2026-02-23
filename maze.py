@@ -186,6 +186,9 @@ class GameState:
         uprow1 = matrix[1] #Stands for Update Row - According to initial state this should be [0,3,0]
         uprow2 = matrix[2] #Stands for Update Row - According to initial state this should be [3,0,0]
 
+        print(uprow1)
+        print(uprow2)
+
         available_crab1 = 1
         available_blank1 = 2
         # Uprow 1 available assets
@@ -193,11 +196,18 @@ class GameState:
         available_blank2 = 2
         # Uprow 2 available assets
 
-        if "1" in uprow1:
-            print("Hi :)")
-        if "1" in uprow1:
-            print("HI :( )")
-        print("HI")
+        if 1 in uprow1:
+            available_blank1 -= 1
+        if 1 in uprow1:
+            available_blank1 -= 1
+        for each in enumerate(uprow1):
+            if uprow1[each]==3:
+                try:
+                    if uprow1[each-1] == 0:
+                        uprow1[each-1] = 3
+                        continue
+                    # It could still mean the path as a character
+
 
         
 
