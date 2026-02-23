@@ -183,9 +183,13 @@ class GameState:
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         # 3 is crab, 2 is door, 1 is person, 0 is blank
-        # Example state [_ _ 2] -> [3 _ 2] -> [_ 3 2]
+        # Example state [_ _ 2] -> [3 _ 2] -> [_ 3 2] -> [1 3 2] -> [3 1 2]
         uprow0 = matrix[0] # Simple swap crabs if wanted, initial state should be [3,0,2]
-        if random.randint(0,1) == 1 and uprow0[0] == 3:
+        if uprow0[0] == 1:
+            uprow0[1] = 3
+        elif uprow0[1] == 1:
+            uprow0[0] = 3
+        elif random.randint(0,1) == 1 and uprow0[0] == 3:
             uprow0[0] = 0
             uprow0[1] = 3
         elif random.randint(0,1) == 1 and uprow0[0] == 0:
@@ -229,7 +233,13 @@ class GameState:
             uprow2[1] = 0
         # Handle for the 3rd array (from the top)
 
-        # Example states [ _ _ 1 ] -> [ _ 3 _ ] -> [ 3 _ 1 ]
+        # Example states [ _ _ 1 ] -> [ _ 3 1 ] -> [ 3 _ 1 ]
+        if uprow1[1] == 3 and random.randint(0,1) == 1:
+            uprow1[0] = 3
+            uprow1[1] = 0
+        elif uprow1[0] == 3 and random.randint(0,1) == 1:
+            uprow1[0] = 0
+            uprow1[1] = 3
     
 
         
