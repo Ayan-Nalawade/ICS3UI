@@ -315,11 +315,20 @@ class GameState:
         if move == "d":
             if plyr_pos[0] == matrix_row_max: # Bottom most row
                 return matrix
-            d_plyr_pos = np.argwhere(matrix == 1)[0]
-            if d_plyr_pos[0] == 3:
+            d_plyr_pos = np.array([plyr_pos[0]+1, plyr_pos[1]]) # Position directly under player
+            if matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 3:
                 self.ancient_characters(ctext.itxt("There is a crab under this ! You cannot go there ! Try again "), 0.04)
                 return matrix
-            elif d_plyr_pos[0] != 3 and d_plyr_pos[0]
+            elif matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 3 and matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[d_plyr_pos[0]][d_plyr_pos[1]] = 1
+            elif matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[d_plyr_pos[0]][d_plyr_pos[1]] = 1
+            else:
+                os.system("clear")
+                self.ancient_characters(ctext.btxt("There is a critical error with logic of matrix. Please restart code :) or ask dev for help with 'logic of matrix'"), 0.03)
+                sys.exit()
 
 
 
