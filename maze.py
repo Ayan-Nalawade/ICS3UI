@@ -211,9 +211,11 @@ class GameState:
                          ])
         # This Matrix defines the game board and the state/position of crab, door, person, and blank spots
 
-        self.ancient_characters("INSTRUCTIONS:", 0.03)
-        self.ancient_characters("1. Enter l (left), r (right), u (up), d (down) when asked to move character", 0.03)
-        self.ancient_characters("2. The crabs move so you must be careful to not hit a crab! " 0.03)
+        self.ancient_characters(ctext.itxt("INSTRUCTIONS:"), 0.03)
+        self.ancient_characters(ctext.itxt("1. Enter l (left), r (right), u (up), d (down) when asked to move character"), 0.03)
+        self.ancient_characters(ctext.itxt("2. The crabs move so you must be careful to not hit a crab! "), 0.03)
+        print("\n\n")
+        input("Press ENTER to begin")
         
         self.level1_scene3_prnt(mtrx)
 
