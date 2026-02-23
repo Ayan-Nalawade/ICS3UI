@@ -202,15 +202,32 @@ class GameState:
         skipr2: bool = False
 
         if uprow1[1] == 1:
-            skipr1 = True
+            uprow1 = np.array[[0,0],[0,0],[0,0]] # Null out the np.ndarray, YES value will be updated, but not in the main matrix
         if uprow2[1] == 1:
-            skip2 = True
-        if skipr1 == True and skipr2 == True:
+            uprow1 = np.array[[0,0],[0,0],[0,0]] # Null out the np.ndarray, YES value will be updated, but not in the main matrix
+        if uprow1[1] == 1 and uprow2[1] == 1:
             return matrix
         # Handle if the player is in the middle of the matrix (position 1); If character (1) in the middle, no crab can move
         # Example state [ _ 1 _ ]
 
-        # Example state [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ] 
+        # Example state [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ]
+        if uprow1[1] == 3 and random.randint(0,1) == 1:
+            uprow1[1] = 0
+            uprow1[2] = 3
+        elif uprow[1] == 0 and random.randint(0,1) == 1:
+            uprow1[1] = 3
+            uprow1[1] = 0
+        # Handle for the 2nd array (from the top)
+
+        if uprow2[1] == 3 and random.randint(0,1) == 1:
+            uprow2[1] = 0
+            uprow2[2] = 3
+        elif uprow2[1] == 0 and random.randint(0,1) == 1:
+            uprow2[1] = 3
+            uprow2[1] = 0
+        # Handle for the 3rd array (from the top)
+    
+
         
 
 
