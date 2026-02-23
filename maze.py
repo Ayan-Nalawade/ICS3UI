@@ -183,23 +183,33 @@ class GameState:
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         # 3 is crab, 2 is door, 1 is person, 0 is blank
+        uprow0 = matrix[0] # Simple swap crabs if wanted, initial state should be [3,0,2]
+        if random.randint(0,1) == 1 and uprow0[0] == 3:
+            uprow0[0] = 0
+            uprow0[1] = 3
+        elif random.randint(0,1) == 1 and uprow0[0] == 0:
+            uprow0[0] = 3
+            uprow0[1] = 0
+        # elif is required because the random can be 0 or 1
+
+
         uprow1 = matrix[1] #Stands for Update Row - According to initial state this should be [0,3,0]
+        uprow1_map:dict = {int(uprow1[0]):0, int(uprow1[1]):1, int(uprow1[2]):2} # Mapping location to thing (crab, character, blanks)
+        skipr1: bool = False
+
         uprow2 = matrix[2] #Stands for Update Row - According to initial state this should be [3,0,0]
+        uprow_2_map:dict = {int(uprow2[0]):0, int(uprow2[1]):1, int(uprow2[2]):2} 
+        skipr2: bool = False
 
-        print(uprow1)
-        print(uprow2)
+        if uprow1[1] == 1:
+            skipr1 = True
+        if uprow2[1] == 1:
+            skip2 = True
+        if skipr1 == True and skipr2 == True:
+            return matrix
+        # Handle if the player is in the middle of the matrix (position 1); If character (1) in the middle, no crab can move
 
-        available_crab1 = 1
-        available_blank1 = 2
-        # Uprow 1 available assets
-        available_crab2 = 1
-        available_blank2 = 2
-        # Uprow 2 available assets
-
-        if 1 in uprow1:
-            available_blank1 -= 1
-        if 1 in uprow1:
-            available_blank1 -= 1
+        
         
 
             
@@ -237,7 +247,7 @@ class GameState:
 
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
-        mtrx = np.array([[3,3,2],
+        mtrx = np.array([[3,0,2],
                          [0,3,1],
                          [3,0,1],
                          [1,0,0]
