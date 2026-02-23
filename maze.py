@@ -182,8 +182,22 @@ class GameState:
             self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
+        # 3 is crab, 2 is door, 1 is person, 0 is blank
         uprow1 = matrix[1] #Stands for Update Row - According to initial state this should be [0,3,0]
         uprow2 = matrix[2] #Stands for Update Row - According to initial state this should be [3,0,0]
+
+        available_crab1 = 1
+        available_blank1 = 2
+        # Uprow 1 available assets
+        available_crab2 = 1
+        available_blank2 = 2
+        # Uprow 2 available assets
+
+        if "1" in uprow1:
+            print("Hi :)")
+        if "1" in uprow1:
+            print("HI :( )")
+        print("HI")
 
         
 
@@ -217,8 +231,8 @@ class GameState:
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,3,2],
-                         [0,3,0],
-                         [3,0,0],
+                         [0,3,1],
+                         [3,0,1],
                          [1,0,0]
                          ])
         # This Matrix defines the game board and the state/position of crab, door, person, and blank . Its not put in the __init__ function on purpose.
@@ -230,11 +244,11 @@ class GameState:
         # input("Press ENTER to begin")
         # os.system("clear")
         
-        self.level1_scene3_prnt(mtrx)
-        print(self.level1_scene3_updte_mtrx(mtrx))
+        #self.level1_scene3_prnt(mtrx)
+        self.level1_scene3_updte_mtrx(mtrx)
 
 
-        self.level1_end()
+        # self.level1_end()
 
 
     def level1(self):
