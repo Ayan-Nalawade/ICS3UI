@@ -182,7 +182,9 @@ class GameState:
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         uprow = matrix[1] #Stands for Update Row - According to initial state this should be [3,3,0]
-        uprow[0] = 1
+        available_crabs = 1
+        available_blanks = 2
+
         return matrix
     
     def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
@@ -207,7 +209,7 @@ class GameState:
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,3,2],
-                         [3,3,0],
+                         [3,0,0],
                          [1,0,0]
                          ])
         # This Matrix defines the game board and the state/position of crab, door, person, and blank . Its not put in the __init__ function on purpose.
@@ -219,7 +221,7 @@ class GameState:
         # input("Press ENTER to begin")
         # os.system("clear")
         
-        # self.level1_scene3_prnt(mtrx)
+        self.level1_scene3_prnt(mtrx)
         print(self.level1_scene3_updte_mtrx(mtrx))
 
 
