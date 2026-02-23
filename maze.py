@@ -180,8 +180,9 @@ class GameState:
             os.system("clear")
             self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
 
-    def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray:
-
+    def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
+        uprow = matrix[1] #Stands for Update Row - According to initial state this should be [3,3,0]
+        uprow[0] = 1
         return matrix
     
     def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
@@ -209,15 +210,17 @@ class GameState:
                          [3,3,0],
                          [1,0,0]
                          ])
-        # This Matrix defines the game board and the state/position of crab, door, person, and blank spots
+        # This Matrix defines the game board and the state/position of crab, door, person, and blank . Its not put in the __init__ function on purpose.
 
-        self.ancient_characters(ctext.itxt("INSTRUCTIONS:"), 0.03)
-        self.ancient_characters(ctext.itxt("1. Enter l (left), r (right), u (up), d (down) when asked to move character"), 0.03)
-        self.ancient_characters(ctext.itxt("2. The crabs move so you must be careful to not hit a crab! "), 0.03)
-        print("\n\n")
-        input("Press ENTER to begin")
+        # self.ancient_characters(ctext.itxt("INSTRUCTIONS: "), 0.03)
+        # self.ancient_characters(ctext.itxt("1. Enter l (left), r (right), u (up), d (down) when asked to move character "), 0.03)
+        # self.ancient_characters(ctext.itxt("2. The crabs move so you must be careful to not hit a crab! "), 0.03)
+        # print("\n\n")
+        # input("Press ENTER to begin")
+        # os.system("clear")
         
-        self.level1_scene3_prnt(mtrx)
+        # self.level1_scene3_prnt(mtrx)
+        print(self.level1_scene3_updte_mtrx(mtrx))
 
 
 
