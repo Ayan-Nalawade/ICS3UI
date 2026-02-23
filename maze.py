@@ -185,37 +185,22 @@ class GameState:
         return matrix
     
     def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
-        count = 0
-        row = ""
-        tmp =""
-        tmp2 = ""
-        for v in np.nditer(matrix):
+        row_str = ""
+        for row in matrix:  
+            row_str = ""
+            for v in row:
+                v = int(v)
+                if v == 0:   
+                    row_str += f" {self.path} "
+                elif v == 1: 
+                    row_str += f" {self.character} "
+                elif v == 2: 
+                    row_str += f" {self.door} "
+                else:        
+                    row_str += f" {self.crab} "
+            print(row_str)
+            print()
 
-            tmp += f" {v} "
-            if count == 3:
-                tmp += "\n"
-                print(row)
-                print()
-                count = 0
-                row = ""
-                continue
-            if int(v) == 0:
-                row += f" {self.path} "
-                tmp2 += " v==0 \n "
-            elif int(v) == 1:
-                row += f" {self.character}"
-                tmp2 += " v==1 \n "
-            elif int(v) == 2:
-                row += f" {self.door}"
-                tmp2 += " v==2 \n "
-            else:
-                row += f" {self.crab} "
-                tmp2 += " v==3 \n "
-            print(count)
-            count += 1
-
-        print(tmp)
-        print(tmp2)
 
 
     def level1_scene3(self): 
@@ -224,6 +209,11 @@ class GameState:
                          [3,3,0],
                          [1,0,0]
                          ])
+        # This Matrix defines the game board and the state/position of crab, door, person, and blank spots
+
+        self.ancient_characters("INSTRUCTIONS:", 0.03)
+        self.ancient_characters("1. Enter l (left), r (right), u (up), d (down) when asked to move character", 0.03)
+        self.ancient_characters("2. The crabs move so you must be careful to not hit a crab! " 0.03)
         
         self.level1_scene3_prnt(mtrx)
 
