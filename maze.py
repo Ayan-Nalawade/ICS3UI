@@ -183,6 +183,7 @@ class GameState:
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         # 3 is crab, 2 is door, 1 is person, 0 is blank
+        # Example state [_ _ 2] -> [3 _ 2] -> [_ 3 2]
         uprow0 = matrix[0] # Simple swap crabs if wanted, initial state should be [3,0,2]
         if random.randint(0,1) == 1 and uprow0[0] == 3:
             uprow0[0] = 0
@@ -201,6 +202,7 @@ class GameState:
         uprow_2_map:dict = {int(uprow2[0]):0, int(uprow2[1]):1, int(uprow2[2]):2} 
         skipr2: bool = False
 
+        # Example state [ _ 1 _ ]
         if uprow1[1] == 1:
             uprow1 = np.array[[0,0],[0,0],[0,0]] # Null out the np.ndarray, YES value will be updated, but not in the main matrix
         if uprow2[1] == 1:
@@ -208,9 +210,9 @@ class GameState:
         if uprow1[1] == 1 and uprow2[1] == 1:
             return matrix
         # Handle if the player is in the middle of the matrix (position 1); If character (1) in the middle, no crab can move
-        # Example state [ _ 1 _ ]
 
-        # Example state [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ]
+
+        # Example states [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ]
         if uprow1[1] == 3 and random.randint(0,1) == 1:
             uprow1[1] = 0
             uprow1[2] = 3
@@ -226,6 +228,8 @@ class GameState:
             uprow2[1] = 3
             uprow2[1] = 0
         # Handle for the 3rd array (from the top)
+
+        # Example states [ _ _ 1 ] -> [ _ 3 _ ] -> [ 3 _ 1 ]
     
 
         
