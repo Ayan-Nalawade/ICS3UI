@@ -1,4 +1,5 @@
 # Note to Mr.Schattman, using os.system("clear") to clear the terminal because CodeHS and VScode uses Linux, so theres no reason to check handling for windows, solaris or other systems
+# Using Level1 as function names because I would like to add to this game later :)
 
 import os, sys
 from time import sleep
@@ -181,9 +182,10 @@ class GameState:
             self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
-        uprow = matrix[1] #Stands for Update Row - According to initial state this should be [3,3,0]
-        available_crabs = 1
-        available_blanks = 2
+        uprow1 = matrix[1] #Stands for Update Row - According to initial state this should be [0,3,0]
+        uprow2 = matrix[2] #Stands for Update Row - According to initial state this should be [3,0,0]
+
+        
 
         return matrix
     
@@ -205,10 +207,17 @@ class GameState:
             print()
 
 
+    def level1_end(self):
+        os.system("clear")
+        self.ancient_characters(ctext.itxt("You have escaped the cave! Good Job! More Levels coming soon :) "), 0.05)
+
+
+
 
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,3,2],
+                         [0,3,0],
                          [3,0,0],
                          [1,0,0]
                          ])
@@ -225,8 +234,8 @@ class GameState:
         print(self.level1_scene3_updte_mtrx(mtrx))
 
 
+        self.level1_end()
 
-    
 
     def level1(self):
         self.resize(100)
@@ -236,15 +245,6 @@ class GameState:
         # self.level1_scene2()
 
         self.level1_scene3()
-
-
-
-
-
-
-
-
-
 
 w,_ = term_size()
 l1= "Welcome to Airarret by Ayan"
