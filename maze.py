@@ -183,78 +183,140 @@ class GameState:
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         # 3 is crab, 2 is door, 1 is person, 0 is blank
+
+
+        # Find where the human is currently located (if present)
+        person_pos = np.argwhere(matrix == 1)
+        person_row = -1
+        person_col = -1
+        if person_pos.size > 0:
+            person_row, person_col = person_pos[0]
+
+
+
         # Example state [_ _ 2] -> [3 _ 2] -> [_ 3 2] -> [1 3 2] -> [3 1 2]
         uprow0 = matrix[0] # Simple swap crabs if wanted, initial state should be [3,0,2]
         if uprow0[0] == 1:
             uprow0[1] = 3
+            uprow0[0] = 1
         elif uprow0[1] == 1:
             uprow0[0] = 3
-        elif random.randint(0,1) == 1 and uprow0[0] == 3:
+            uprow0[1] = 1
+        elif random.randint(0,1) == 1 and uprow0[0] == 3 and uprow0[1] == 0:
             uprow0[0] = 0
             uprow0[1] = 3
-        elif random.randint(0,1) == 1 and uprow0[0] == 0:
+        elif random.randint(0,1) == 1 and uprow0[0] == 0 and uprow0[1] == 3:
             uprow0[0] = 3
             uprow0[1] = 0
         # elif is required because the random can be 0 or 1
 
 
         uprow1 = matrix[1] #Stands for Update Row - According to initial state this should be [0,3,0]
-        uprow1_map:dict = {int(uprow1[0]):0, int(uprow1[1]):1, int(uprow1[2]):2} # Mapping location to thing (crab, character, blanks)
-        skipr1: bool = False
 
         uprow2 = matrix[2] #Stands for Update Row - According to initial state this should be [3,0,0]
-        uprow_2_map:dict = {int(uprow2[0]):0, int(uprow2[1]):1, int(uprow2[2]):2} 
-        skipr2: bool = False
 
         # Example state [ _ 1 _ ]
-        if uprow1[1] == 1:
-            uprow1 = np.array[[0,0],[0,0],[0,0]] # Null out the np.ndarray, YES value will be updated, but not in the main matrix
-        if uprow2[1] == 1:
-            uprow1 = np.array[[0,0],[0,0],[0,0]] # Null out the np.ndarray, YES value will be updated, but not in the main matrix
-        if uprow1[1] == 1 and uprow2[1] == 1:
+        freeze_row1 = False
+        freeze_row2 = False
+        if person_row == 1 and person_col == 1:
+            freeze_row1 = True 
+        if person_row == 2 and person_col == 1:
+            freeze_row2 = True 
+        if freeze_row1 and freeze_row2:
             return matrix
         # Handle if the player is in the middle of the matrix (position 1); If character (1) in the middle, no crab can move
 
 
-        # Example states [ 1 _ _ ] -> [ 1 3 _ ] -> [ 1 _ 3 ]
-        if uprow1[1] == 3 and random.randint(0,1) == 1:
-            uprow1[1] = 0
-            uprow1[2] = 3
-        elif uprow[1] == 0 and random.randint(0,1) == 1:
-            uprow1[1] = 3
-            uprow1[1] = 0
+        # Example states [ 1 0 0 ] -> [ 1 3 0 ] -> [ 1 0 3 ] -> [0 0 3]
+        if not freeze_row1:
+            crab_pos1 = np.where(uprow1 == 3)[0]
+            if crab_pos1.size > 0:
+                crab_col1 = int(crab_pos1[0])
+
+                if person_row == 1 and person_col == 0:
+                    if crab_col1 == 1 and random.randint(0,1) == 1 and uprow1[2] == 0:
+                        uprow1[1] = 0
+                        uprow1[2] = 3
+                    elif crab_col1 == 2 and random.randint(0,1) == 1 and uprow1[1] == 0:
+                        uprow1[2] = 0
+                        uprow1[1] = 3
+                elif person_row == 1 and person_col == 2:
+                    if crab_col1 == 1 and random.randint(0,1) == 1 and uprow1[0] == 0:
+                        uprow1[1] = 0
+                        uprow1[0] = 3
+                    elif crab_col1 == 0 and random.randint(0,1) == 1 and uprow1[1] == 0:
+                        uprow1[0] = 0
+                        uprow1[1] = 3
+                else:
+                    if crab_col1 == 0 and random.randint(0,1) == 1 and uprow1[1] == 0:
+                        uprow1[0] = 0
+                        uprow1[1] = 3
+                    elif crab_col1 == 2 and random.randint(0,1) == 1 and uprow1[1] == 0:
+                        uprow1[2] = 0
+                        uprow1[1] = 3
+                    elif crab_col1 == 1 and random.randint(0,1) == 1:
+                        if random.randint(0,1) == 1 and uprow1[0] == 0:
+                            uprow1[1] = 0
+                            uprow1[0] = 3
+                        elif uprow1[2] == 0:
+                            uprow1[1] = 0
+                            uprow1[2] = 3
         # Handle for the 2nd array (from the top)
 
-        if uprow2[1] == 3 and random.randint(0,1) == 1:
-            uprow2[1] = 0
-            uprow2[2] = 3
-        elif uprow2[1] == 0 and random.randint(0,1) == 1:
-            uprow2[1] = 3
-            uprow2[1] = 0
+        if not freeze_row2:
+            crab_pos2 = np.where(uprow2 == 3)[0]
+            if crab_pos2.size > 0:
+                crab_col2 = int(crab_pos2[0])
+
+                if person_row == 2 and person_col == 0:
+                    if crab_col2 == 1 and random.randint(0,1) == 1 and uprow2[2] == 0:
+                        uprow2[1] = 0
+                        uprow2[2] = 3
+                    elif crab_col2 == 2 and random.randint(0,1) == 1 and uprow2[1] == 0:
+                        uprow2[2] = 0
+                        uprow2[1] = 3
+                elif person_row == 2 and person_col == 2:
+                    if crab_col2 == 1 and random.randint(0,1) == 1 and uprow2[0] == 0:
+                        uprow2[1] = 0
+                        uprow2[0] = 3
+                    elif crab_col2 == 0 and random.randint(0,1) == 1 and uprow2[1] == 0:
+                        uprow2[0] = 0
+                        uprow2[1] = 3
+                else:
+                    if crab_col2 == 0 and random.randint(0,1) == 1 and uprow2[1] == 0:
+                        uprow2[0] = 0
+                        uprow2[1] = 3
+                    elif crab_col2 == 2 and random.randint(0,1) == 1 and uprow2[1] == 0:
+                        uprow2[2] = 0
+                        uprow2[1] = 3
+                    elif crab_col2 == 1 and random.randint(0,1) == 1:
+                        if random.randint(0,1) == 1 and uprow2[0] == 0:
+                            uprow2[1] = 0
+                            uprow2[0] = 3
+                        elif uprow2[2] == 0:
+                            uprow2[1] = 0
+                            uprow2[2] = 3
         # Handle for the 3rd array (from the top)
 
         # Example states [ _ _ 1 ] -> [ _ 3 1 ] -> [ 3 _ 1 ]
-        if uprow1[1] == 3 and random.randint(0,1) == 1:
-            uprow1[0] = 3
-            uprow1[1] = 0
-        elif uprow1[0] == 3 and random.randint(0,1) == 1:
-            uprow1[0] = 0
-            uprow1[1] = 3
-    
-
-        
-
-
-        
-        
-
-            
-                
-
-
-        
+        if not freeze_row1 and person_row == 1 and person_col == 2:
+            if uprow1[1] == 3 and random.randint(0,1) == 1 and uprow1[0] == 0:
+                uprow1[0] = 3
+                uprow1[1] = 0
+            elif uprow1[0] == 3 and random.randint(0,1) == 1 and uprow1[1] == 0:
+                uprow1[0] = 0
+                uprow1[1] = 3
 
         return matrix
+    
+    def upd_move(self, move:str, matrix:np.ndarray) -> np.ndarray: # Move error handling done by default when passed in `move`; valid inputs are l, r, u, d
+        plyr_pos = np.argwhere(matrix == 1)[0] # Find location similar to [3 0] where 3 is row and 0 is coloumn number
+
+
+
+
+        return matrix
+
     
     def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
         row_str = ""
@@ -284,8 +346,8 @@ class GameState:
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,0,2],
-                         [0,3,1],
-                         [3,0,1],
+                         [0,3,0],
+                         [3,0,0],
                          [1,0,0]
                          ])
         # This Matrix defines the game board and the state/position of crab, door, person, and blank . Its not put in the __init__ function on purpose.
@@ -296,9 +358,9 @@ class GameState:
         # print("\n\n")
         # input("Press ENTER to begin")
         # os.system("clear")
-        
-        #self.level1_scene3_prnt(mtrx)
-        self.level1_scene3_updte_mtrx(mtrx)
+
+        self.upd_move("left", mtrx)
+
 
 
         # self.level1_end()
@@ -313,27 +375,27 @@ class GameState:
 
         self.level1_scene3()
 
-w,_ = term_size()
-l1= "Welcome to Airarret by Ayan"
-print(ctext.btxt("#"*w))
-print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
-print(ctext.btxt("#"*w))
+# w,_ = term_size()
+# l1= "Welcome to Airarret by Ayan"
+# print(ctext.btxt("#"*w))
+# print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
+# print(ctext.btxt("#"*w))
 
-while True:
-    print(ctext.btxt("\r Start Game? (yes/no): "), end='')
-    x = input("").lower()
+# while True:
+#     print(ctext.btxt("\r Start Game? (yes/no): "), end='')
+#     x = input("").lower()
 
-    if x in ['y', "yes", "ya"]:
-        print(ctext.ctxt("green","Okay lets go :)"))
-        break
-    elif x in ['n', 'no', 'nah']:
-        os.system("clear")
-        print(ctext.btxt("Awh >:("))
-        sys.exit()
-    else:
-        os.system("clear")
-        print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
-        sleep(1)
+#     if x in ['y', "yes", "ya"]:
+#         print(ctext.ctxt("green","Okay lets go :)"))
+#         break
+#     elif x in ['n', 'no', 'nah']:
+#         os.system("clear")
+#         print(ctext.btxt("Awh >:("))
+#         sys.exit()
+#     else:
+#         os.system("clear")
+#         print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
+#         sleep(1)
 
 g = GameState()
 g.level1()
