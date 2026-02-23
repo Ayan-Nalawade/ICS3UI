@@ -311,6 +311,15 @@ class GameState:
     
     def upd_move(self, move:str, matrix:np.ndarray) -> np.ndarray: # Move error handling done by default when passed in `move`; valid inputs are l, r, u, d
         plyr_pos = np.argwhere(matrix == 1)[0] # Find location similar to [3 0] where 3 is row and 0 is coloumn number
+        matrix_row_max = np.shape(matrix)[0]-1
+        if move == "d":
+            if plyr_pos[0] == matrix_row_max: # Bottom most row
+                return matrix
+            d_plyr_pos = np.argwhere(matrix == 1)[0]
+            if d_plyr_pos[0] == 3:
+                self.ancient_characters(ctext.itxt("There is a crab under this ! You cannot go there ! Try again "), 0.04)
+                return matrix
+            elif d_plyr_pos[0] != 3 and d_plyr_pos[0]
 
 
 
@@ -359,7 +368,7 @@ class GameState:
         # input("Press ENTER to begin")
         # os.system("clear")
 
-        self.upd_move("left", mtrx)
+        self.upd_move("d", mtrx)
 
 
 
