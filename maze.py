@@ -19,6 +19,7 @@ class coltxt:
                         "cyan":36,
                         "bred": 91,
                         }
+        
 
     
     def ctxt(self, colour:str, txt:str) -> str:
@@ -52,6 +53,7 @@ class GameState:
         self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
         self.usrin = ""
         self.level1_complete:bool = False
+        self.cnt = 0 # Count how mnay times the user picked ghost door
         
 
     def binomial_expansion(self, number:int) -> tuple:
@@ -115,10 +117,18 @@ class GameState:
             else:
                 break
 
+        
         if self.doorchoice == self.usrin:
             os.system("clear")
-            self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You have died. "))), 0.01)
-            sys.exit()
+            if self.cnt >= 2:
+                self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You were unable to escape this time and died "))), 0.01)
+                sys.exit()
+            else:
+                self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You run out! "))), 0.01)
+            sleep(2)
+            self.cnt += 1
+            self.level1_scene2()
+            
         elif self.rc == self.usrin: # Second worst choice
             os.system("clear")
             self.ancient_characters(ctext.itxt("You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
