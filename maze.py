@@ -9,7 +9,6 @@ import random
 
 class coltxt:
     def __init__(self):
-        self.BOLD = "\033[1m"
         self.colours = {"red":31, 
                         "green":32, 
                         "yellow":33, 
@@ -144,7 +143,8 @@ class GameState:
                 else:
                     os.system("clear")
                     if self.usrin == "yes":
-                        if random.randint(0,1) == 1:
+                        bgate = False                                  # DEBUG: Allow this section to run regardless 
+                        if random.randint(0,1) == 1 or bgate == True:
                             binomial_number = random.randint(0,5)
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
                             time.sleep(2)
