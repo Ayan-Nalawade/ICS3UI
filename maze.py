@@ -143,22 +143,28 @@ class GameState:
         self.ancient_characters(ctext.itxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
         self.ancient_characters(ctext.itxt("Escape the cave without getting hurt "), 0.05)
         sleep(2)                  # Sleep to let the user read
-        os.system("clear")        # 
+        os.system("clear")        # Clear the screen
 
     def level1_scene2(self):
-        a = time.perf_counter() # Start timer
-        os.system("clear")
-        self.ancient_characters(f"{self.path*20}{self.character}{self.path*20}{self.door} {self.door} {self.door}", 0.01)
-        self.ancient_characters(f"{' '*17}  You{' '*20}A  B  C", 0.01)
+        """
+        This is the second scene of level 1. This has the door level where it prints out the door and the introduction for little boy,
+        weary traveler, and little angel. This is a solid chunk of the game right now
+        """
+        a = time.perf_counter() # Start timer (starts counter to see how long it takes)
+        os.system("clear")      # Clear the terminal
+        self.ancient_characters(f"{self.path*20}{self.character}{self.path*20}{self.door} {self.door} {self.door}", 0.01) # Print the board 
+        self.ancient_characters(f"{' '*17}  You{' '*20}A  B  C", 0.01) # Print the door choice (A, B, C)
 
         print("\n\n\n\n") # Spaces :)
 
+        # Introduction to the creepy angel. 
         self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you... "), 0.05)
 
 
-        # print(self.doorchoice)                                       # DEBUG TO FIND DOOR WITH GHOSTS
-        # print(self.rc)                                               # DEBUG TO FIND DOOR WITH SECOND BEST CHOICE/ DARKNESS ROOM
-        while True:
+        # print(f"Ghost door {self.doorchoice}")                            # DEBUG TO FIND DOOR WITH GHOSTS
+        # print(f"Door with darkness room {self.rc}")                       # DEBUG TO FIND DOOR WITH SECOND BEST CHOICE/ DARKNESS ROOM
+
+        while True: # Keep asking for user input until they respond with a, b, or c
             self.usrin = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
             if self.usrin not in ["a", "b", "c"]:
                 continue
@@ -166,38 +172,55 @@ class GameState:
                 break
 
         
-        if self.doorchoice == self.usrin:
+        if self.doorchoice == self.usrin: # If the user picks the door with ghosts
             os.system("clear")
-            if self.cnt >= 2:
+            # We let the user pick the door 2 times in total before the ghosts kill them. 
+            if self.cnt >= 2: # Check how many times the user picked the door
+                # The ghosts killed the user
                 self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You were unable to escape this time and died "))), 0.01)
-                sys.exit()
+                sys.exit() # Call safe program exit
             else:
+                # Ghosts but you escaped somehow :)
                 self.ancient_characters((ctext.ctxt("yellow",(f"Door {self.usrin.upper()} had ghosts! You run out! "))), 0.01)
-            sleep(2)
-            self.cnt += 1
-            self.level1_scene2()
+    
+            sleep(2) # Sleep to let the user read
+            self.cnt += 1 # Progress the count by one
+            self.level1_scene2() # Recall this function to let the user retry picking the doors
             
-        elif self.rc == self.usrin: # Second worst choice
+        elif self.rc == self.usrin: # Second worst choice (darkness room)
             os.system("clear")
+
+            # Explaination of where the user is
             self.ancient_characters(ctext.itxt("You enter the door, theres darkness everywhere. The door closes behind you. "),0.05)
             self.ancient_characters(ctext.itxt("There is a light, you walk to the light and see a weary traveler "),0.05)
-            print("\n\n\n") # Spam new lines for spaces
-            self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel "),0.05)
+
             print("\n\n\n") # Spam new lines for spaces
 
-            while True:
-                self.usrin = input(ctext.btxt("Your choice? (Yes/No): ")).lower()
-                if self.usrin not in ["yes", "no"]:
+            # Introduction of "weary traveler"
+            self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hello sir. Would you like to donate $5? In return I will give you some intel "),0.05)
+            
+            print("\n\n\n") # Spam new lines for spaces
+
+
+            while True: # Check if user is giving what is wanted
+                self.usrin = input(ctext.btxt("Your choice? (Yes/No): ")).lower() # Does the user want to donate $5?
+                if self.usrin not in ["yes", "no"]: # If the user says anything BUT yes or no
                     continue
                 else:
-                    os.system("clear")
-                    if self.usrin == "yes":
+                    os.system("clear") # Clear up the terminal
+
+                    if self.usrin == "yes":  # If the user picks yes
                         bgate = False                                  # DEBUG: Allow this section to run regardless 
-                        if random.randint(0,1) == 1 or bgate == True:
-                            binomial_number = random.randint(0,5)
+                        if random.randint(0,1) == 1 or bgate == True: # Check if DEBUG is wanted or if random number is 1
+
+                            binomial_number = random.randint(0,5) # IN the format (a+b)^2, what should be b value?
+
+                            # Weary traveller robs us
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
                             sleep(2)
-                            os.system("clear")
+                            os.system("clear") # Clear the terminal
+
+                            # Introduction of the little boy; with character and little boy conversation. 
                             print(ctext.itxt("A random little boy appears"))
                             self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you? "), 0.03)
                             self.ancient_characters(ctext.ctxt("green", "(You): He rob- That doesn't matter. Can you send me back? "), 0.03)
@@ -205,34 +228,37 @@ class GameState:
                             self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Tell me. If I am told to expand the binomial expression (a+{binomial_number})^2, "), 0.03)
                             self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): What would be the values for a, b, c? (Hint: ax^2+bx+c=0, for a,b,c, looking for the coefficient) "), 0.03)
 
-                            print("\n\n\n")
+                            print("\n\n\n")  # Add new lines
 
-                            while True:
-                                a1,b1,c1 = self.binomial_expansion(binomial_number)
+                            while True: # We want the user to give out the correct values, will iterate until correct values given
+                                a1,b1,c1 = self.binomial_expansion(binomial_number)  # Do the polynomial expansion
                                 # print(a1, b1, c1)                                      # DEBUG TO FIND VALUES
-                                try:
+
+                                try: # Ask for values and make sure they aren't random values and just integers
                                     valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
                                     valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
                                     valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
                                 except ValueError:
                                     continue
 
-                                if valuea == a1 and valueb == b1 and valuec == c1:
+                                if valuea == a1 and valueb == b1 and valuec == c1: # If all values match the little boy sends character back
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now ! Oh yeah also the correct door is {self.gch.upper()} "), 0.03)
                                     sleep(2)
                                     break
-                                else:
+                                else: # If values don't match, the little boy will give you another chance (unlimited chances)
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
-                        else:
+ 
+                        else: # If the random function doesn't say 1, then the character gets the correct door value
                             self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch.upper()}. Vanishes "), 0.05)
                             sleep(2)
 
                         os.system("clear")
-                        b = time.perf_counter() # End Timer
-                        self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05)
+                        b = time.perf_counter() # End Timer (a being start timer. It will count how long it took for the user to get here)
+                        self.ancient_characters(ctext.itxt(f"You go {round(b-a,0)} seconds back "),0.05) # Print out "going back x seconds" where x is the time it took for the user to get here
                         sleep(2)
                         os.system("clear")
-                    else:
+                    
+                    else: # If the user responds "no" to when weary traveller asks for money; he will stab and run away
                         self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hmm? No? I don't think you buddy "),0.05)
                         print(ctext.itxt("The weary traveler stabs and robs you."))
                         self.ancient_characters(ctext.itxt("You wake up to the same 3 doors. What? Was this a dream? "), 0.03)
@@ -241,8 +267,12 @@ class GameState:
 
 
                     break
-            self.level1_scene2()
-        else:
+
+            # Regardless of what happenes we want to rerun the function to give the user another try (if the user dies, we call safe os exit to quit program)
+            self.level1_scene2() 
+        
+        else: # If the user picks the best possible door `gch`
+            # We introduce--CRABS!
             os.system("clear")
             self.ancient_characters(ctext.itxt("You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. ") ,0.05)
             self.ancient_characters(ctext.itxt("The crabs spotted you! Now they scurry over to block the exit! Try to escape quickly! ") ,0.05)
@@ -250,7 +280,13 @@ class GameState:
             os.system("clear")
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
-        # 3 is crab, 2 is door, 1 is person, 0 is blank
+        """
+        Update the crab positions each time; this function accounts for blank spaces, and characters being in the way
+
+        args:
+        `matrix`: This is the board itself
+        """
+        # 3 is crab, 2 is door, 1 is person, 0 is blank (matrix value)
 
 
         # Find where the human is currently located (if present)
@@ -378,11 +414,22 @@ class GameState:
         return matrix
     
     def level1_end(self):
+        """
+        Level end. Currently it says the game was completed. But adding levels, level1_end would print something else
+        """
         os.system("clear")
         self.ancient_characters(ctext.itxt("You have escaped the cave! Good Job! "), 0.05)
         sys.exit()
     
     def upd_move(self, move:str, matrix:np.ndarray) -> np.ndarray: # Move error handling done by default when passed in `move`; valid inputs are l, r, u, d
+        """
+        This function updates the move. It accounts for if the character wants to move where a crab is, if its a legal move, and if the move touches the door
+        
+        args:
+        `move`: This is the move (correct moves from the user must be filtered before this function), takes l,r,u, or d values
+        `matrix`: This is the game board itself
+        """
+        
         plyr_pos = np.argwhere(matrix == 1)[0] # Find location similar to [3 0] where 3 is row and 0 is coloumn number
         matrix_row_max = np.shape(matrix)[0]-1
         matrix_col_max = np.shape(matrix)[1]-1
