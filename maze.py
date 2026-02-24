@@ -428,15 +428,19 @@ class GameState:
         args:
         `move`: This is the move (correct moves from the user must be filtered before this function), takes l,r,u, or d values
         `matrix`: This is the game board itself
+        
+        It returns the matrix itself.
         """
         
+
         plyr_pos = np.argwhere(matrix == 1)[0] # Find location similar to [3 0] where 3 is row and 0 is coloumn number
-        matrix_row_max = np.shape(matrix)[0]-1
+        matrix_row_max = np.shape(matrix)[0]-1 # Find the shape of the matrix the "-1" because its index 1 (starts from 1)
         matrix_col_max = np.shape(matrix)[1]-1
         if move == "d":
             if plyr_pos[0] == matrix_row_max: # Bottom most row
                 return matrix
             
+
             d_plyr_pos = np.array([plyr_pos[0]+1, plyr_pos[1]]) # Position directly under player
             if matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 3:
                 os.system("clear")
@@ -542,6 +546,12 @@ class GameState:
 
     
     def level1_scene3_prnt(self, matrix:np.ndarray) -> None:
+        """
+        This prints out the board based on the matrix
+
+        args:
+        `matrix`: The matrix for the board that gets converted to emojies and printed out
+        """
         row_str = ""
         for row in matrix:  
             row_str = ""
@@ -560,6 +570,9 @@ class GameState:
 
 
     def level1_scene3(self): 
+        """
+        The 3rd scene. In this scene the crab game is played AND instructions
+        """
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,0,2],
                          [0,3,0],
@@ -583,7 +596,7 @@ class GameState:
                 a = input("Where to move? Enter l (left), r (right), u (up) or d (down) : ")
                 a = a.lower()
                 a = a.strip(" ")
-                if a not in ["left", "right", "up", "down", "l", "r", "u", "d"]:
+                if a not in ["left", "right", "up", "down", "l", "r", "u", "d"]: # Check if the input from the user is in the list
                     continue
                 elif a == "left":
                     a = "l"
@@ -601,6 +614,9 @@ class GameState:
 
 
     def level1(self):
+        """
+        Calls all the functions in the function
+        """
         self.resize(100)
 
         self.level1_scene1()
@@ -609,12 +625,14 @@ class GameState:
 
         self.level1_scene3()
 
+# Print out the "#" and the text
 w,_ = term_size()
 l1= "Welcome to Airarret by Ayan"
 print(ctext.btxt("#"*w))
 print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
 print(ctext.btxt("#"*w))
 
+# The game 
 while True:
     print(ctext.btxt("\r Start Game? (yes/no): "), end='')
     x = input("").lower()
