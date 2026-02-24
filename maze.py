@@ -156,7 +156,8 @@ class GameState:
                                 valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
 
                                 if valuea == a1 and valueb == b1 and valuec == c1:
-                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now ! Oh yeah also the correct door is {self.gch.upper()}"), 0.03)
+                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now ! Oh yeah also the correct door is {self.gch.upper()} "), 0.03)
+                                    sleep(2)
                                     break
                                 else:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
