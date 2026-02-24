@@ -51,6 +51,8 @@ class GameState:
         self.doorchoice = ""
         self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
         self.usrin = ""
+        self.level1_complete:bool = False
+        
 
     def binomial_expansion(self, number:int) -> tuple:
         # Number will be the number an binomial expression that looks like this: (a+<number>)^2
@@ -104,8 +106,8 @@ class GameState:
         self.ancient_characters(ctext.ctxt("red", "(Creepy Angel): Which door will it be? Be careful, you don't want ghosts to get you... "), 0.05)
 
 
-        print(self.doorchoice)
-        print(self.rc)
+        # print(self.doorchoice)                                       # DEBUG TO FIND DOOR WITH GHOSTS
+        # print(self.rc)                                               # DEBUG TO FIND DOOR WITH SECOND BEST CHOICE/ DARKNESS ROOM
         while True:
             self.usrin = input(ctext.btxt("Your choice? (A, B, C): ")).lower()
             if self.usrin not in ["a", "b", "c"]:
@@ -148,13 +150,13 @@ class GameState:
 
                             while True:
                                 a1,b1,c1 = self.binomial_expansion(binomial_number)
-                                print(a1, b1, c1)
+                                # print(a1, b1, c1)                                      # DEBUG TO FIND VALUES
                                 valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
                                 valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
                                 valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
 
                                 if valuea == a1 and valueb == b1 and valuec == c1:
-                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now !"), 0.03)
+                                    self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now ! Oh yeah also the correct door is {self.gch.upper()}"), 0.03)
                                     break
                                 else:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
@@ -179,7 +181,10 @@ class GameState:
             self.level1_scene2()
         else:
             os.system("clear")
-            self.ancient_characters(ctext.itxt("teal","You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. "),0.05)
+            self.ancient_characters(ctext.itxt("You enter the door, You see a playground, with crabs playing on the swings, slides, and seesaw. ") ,0.05)
+            self.ancient_characters(ctext.itxt("The crabs spotted you! Now they scurry over to block the exit! Try to escape quickly! ") ,0.05)
+            sleep(2)
+            os.system("clear")
 
     def level1_scene3_updte_mtrx(self, matrix:np.ndarray) -> np.ndarray: # Force np.ndarray--Ensure unwanted input not provided
         # 3 is crab, 2 is door, 1 is person, 0 is blank
@@ -309,29 +314,119 @@ class GameState:
 
         return matrix
     
+    def level1_end(self):
+        os.system("clear")
+        self.ancient_characters(ctext.itxt("You have escaped the cave! Good Job! "), 0.05)
+        sys.exit()
+    
     def upd_move(self, move:str, matrix:np.ndarray) -> np.ndarray: # Move error handling done by default when passed in `move`; valid inputs are l, r, u, d
         plyr_pos = np.argwhere(matrix == 1)[0] # Find location similar to [3 0] where 3 is row and 0 is coloumn number
         matrix_row_max = np.shape(matrix)[0]-1
+        matrix_col_max = np.shape(matrix)[1]-1
         if move == "d":
             if plyr_pos[0] == matrix_row_max: # Bottom most row
                 return matrix
+            
             d_plyr_pos = np.array([plyr_pos[0]+1, plyr_pos[1]]) # Position directly under player
             if matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 3:
+                os.system("clear")
                 self.ancient_characters(ctext.itxt("There is a crab under this ! You cannot go there ! Try again "), 0.04)
+                time.sleep(2)
                 return matrix
+            
             elif matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 3 and matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 2:
                 matrix[plyr_pos[0]][plyr_pos[1]] = 0
                 matrix[d_plyr_pos[0]][d_plyr_pos[1]] = 1
+
             elif matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 2:
                 matrix[plyr_pos[0]][plyr_pos[1]] = 0
                 matrix[d_plyr_pos[0]][d_plyr_pos[1]] = 1
+
             else:
                 os.system("clear")
                 self.ancient_characters(ctext.btxt("There is a critical error with logic of matrix. Please restart code :) or ask dev for help with 'logic of matrix'"), 0.03)
                 sys.exit()
 
+        elif move == "u":
+            if plyr_pos[0] == 0: # Top most row
+                return matrix
+            u_plyr_pos = np.array([plyr_pos[0]-1, plyr_pos[1]]) # Position directly above player
+            if matrix[u_plyr_pos[0]][u_plyr_pos[1]] == 3:
+                os.system("clear")
+                self.ancient_characters(ctext.itxt("There is a crab above this ! You cannot go there ! Try again "), 0.04)
+                time.sleep(2)
+                return matrix
+            
+            elif matrix[u_plyr_pos[0]][u_plyr_pos[1]] != 3 and matrix[u_plyr_pos[0]][u_plyr_pos[1]] != 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[u_plyr_pos[0]][u_plyr_pos[1]] = 1
 
+            elif matrix[u_plyr_pos[0]][u_plyr_pos[1]] == 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[u_plyr_pos[0]][u_plyr_pos[1]] = 1
+                self.level1_end()
+                self.level1_complete = True
 
+            else:
+                os.system("clear")
+                self.ancient_characters(ctext.btxt("There is a critical error with logic of matrix. Please restart code :) or ask dev for help with 'logic of matrix'"), 0.03)
+                sys.exit()
+
+        elif move == "l":
+            if plyr_pos[1] == 0: # Left most column
+                return matrix
+            
+            l_plyr_pos = np.array([plyr_pos[0], plyr_pos[1]-1]) # Position directly left of player
+            if matrix[l_plyr_pos[0]][l_plyr_pos[1]] == 3:
+                os.system("clear")
+                self.ancient_characters(ctext.itxt("There is a crab on the left ! You cannot go there ! Try again "), 0.04)
+                time.sleep(2)
+                return matrix
+            
+            elif matrix[l_plyr_pos[0]][l_plyr_pos[1]] != 3 and matrix[l_plyr_pos[0]][l_plyr_pos[1]] != 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[l_plyr_pos[0]][l_plyr_pos[1]] = 1
+
+            elif matrix[l_plyr_pos[0]][l_plyr_pos[1]] == 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[l_plyr_pos[0]][l_plyr_pos[1]] = 1
+                self.level1_end()
+                self.level1_complete = True
+
+            else:
+                os.system("clear")
+                self.ancient_characters(ctext.btxt("There is a critical error with logic of matrix. Please restart code :) or ask dev for help with 'logic of matrix'"), 0.03)
+                sys.exit()
+
+        elif move == "r":
+            if plyr_pos[1] == matrix_col_max: # Right most column
+                return matrix
+            
+            r_plyr_pos = np.array([plyr_pos[0], plyr_pos[1]+1]) # Position directly right of player
+            if matrix[r_plyr_pos[0]][r_plyr_pos[1]] == 3:
+                os.system("clear")
+                self.ancient_characters(ctext.itxt("There is a crab on the right ! You cannot go there ! Try again "), 0.04)
+                time.sleep(2)
+                return matrix
+            
+            elif matrix[r_plyr_pos[0]][r_plyr_pos[1]] != 3 and matrix[r_plyr_pos[0]][r_plyr_pos[1]] != 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[r_plyr_pos[0]][r_plyr_pos[1]] = 1
+
+            elif matrix[r_plyr_pos[0]][r_plyr_pos[1]] == 2:
+                matrix[plyr_pos[0]][plyr_pos[1]] = 0
+                matrix[r_plyr_pos[0]][r_plyr_pos[1]] = 1
+                self.level1_end()
+                self.level1_complete = True
+
+            else:
+                os.system("clear")
+                self.ancient_characters(ctext.btxt("There is a critical error with logic of matrix. Please restart code :) or ask dev for help with 'logic of matrix' "), 0.03)
+                sys.exit()
+        else:
+                os.system("clear")
+                self.ancient_characters(ctext.btxt("The programmer made an oopsie with upd_move :) Please ask them to fix it :) "), 0.03)
+                sys.exit()
 
         return matrix
 
@@ -354,13 +449,6 @@ class GameState:
             print()
 
 
-    def level1_end(self):
-        os.system("clear")
-        self.ancient_characters(ctext.itxt("You have escaped the cave! Good Job! More Levels coming soon :) "), 0.05)
-
-
-
-
     def level1_scene3(self): 
         # 3 is crab, 2 is door, 1 is person, 0 is blank
         mtrx = np.array([[3,0,2],
@@ -370,50 +458,68 @@ class GameState:
                          ])
         # This Matrix defines the game board and the state/position of crab, door, person, and blank . Its not put in the __init__ function on purpose.
 
-        # self.ancient_characters(ctext.itxt("INSTRUCTIONS: "), 0.03)
-        # self.ancient_characters(ctext.itxt("1. Enter l (left), r (right), u (up), d (down) when asked to move character "), 0.03)
-        # self.ancient_characters(ctext.itxt("2. The crabs move so you must be careful to not hit a crab! "), 0.03)
-        # print("\n\n")
-        # input("Press ENTER to begin")
-        # os.system("clear")
+        self.ancient_characters(ctext.itxt("INSTRUCTIONS: "), 0.03)
+        self.ancient_characters(ctext.itxt("1. Enter l (left), r (right), u (up), d (down) when asked to move character "), 0.03)
+        self.ancient_characters(ctext.itxt("2. The crabs move so you must be careful to not hit a crab! "), 0.03)
+        print("\n\n")
+        input("Press ENTER to begin")
+        os.system("clear")
 
-        self.upd_move("d", mtrx)
+        while self.level1_complete != True:
+            os.system("clear")
+            self.level1_scene3_prnt(mtrx)
+            self.level1_scene3_updte_mtrx(mtrx)
+            while True:
+                a = input("Where to move? Enter l (left), r (right), u (up) or d (down) : ")
+                a = a.lower()
+                a = a.strip(" ")
+                if a not in ["left", "right", "up", "down", "l", "r", "u", "d"]:
+                    continue
+                elif a == "left":
+                    a = "l"
+                elif a == "right":
+                    a = "r"
+                elif a == "up":
+                    a = "u"
+                elif a == "down":
+                    a = "d"
+                # If neither, then it must be a one of l, r, u, d
+                break
+            self.upd_move(a, mtrx)
 
 
-
-        # self.level1_end()
 
 
     def level1(self):
         self.resize(100)
 
-        # self.level1_scene1()
+        self.level1_scene1()
 
-        # self.level1_scene2()
+        self.level1_scene2()
 
         self.level1_scene3()
 
-# w,_ = term_size()
-# l1= "Welcome to Airarret by Ayan"
-# print(ctext.btxt("#"*w))
-# print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
-# print(ctext.btxt("#"*w))
+w,_ = term_size()
+l1= "Welcome to Airarret by Ayan"
+print(ctext.btxt("#"*w))
+print(f"{ctext.btxt('# ')}{ctext.ctxt('bred',l1)}{' '*(w-(4+len(l1)))}{ctext.btxt(' #')}") # Compute spaces, #, and text to make sure it works with the print line before and after
+print(ctext.btxt("#"*w))
 
-# while True:
-#     print(ctext.btxt("\r Start Game? (yes/no): "), end='')
-#     x = input("").lower()
+while True:
+    print(ctext.btxt("\r Start Game? (yes/no): "), end='')
+    x = input("").lower()
 
-#     if x in ['y', "yes", "ya"]:
-#         print(ctext.ctxt("green","Okay lets go :)"))
-#         break
-#     elif x in ['n', 'no', 'nah']:
-#         os.system("clear")
-#         print(ctext.btxt("Awh >:("))
-#         sys.exit()
-#     else:
-#         os.system("clear")
-#         print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
-#         sleep(1)
+    if x in ['y', "yes", "ya"]:
+        print(ctext.ctxt("green","Okay lets go :)"))
+        break
+    elif x in ['n', 'no', 'nah']:
+        os.system("clear")
+        print(ctext.btxt("Awh >:("))
+        sys.exit()
+    else:
+        os.system("clear")
+        print(ctext.ctxt("red", "Gibberish ? I asked yes or no question :) "))
+        sleep(1)
 
 g = GameState()
 g.level1()
