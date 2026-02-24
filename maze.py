@@ -18,16 +18,30 @@ class coltxt:
                         "cyan":36,
                         "bred": 91,
                         }
+        # Define colours for ANSII text. for example for bred (bright red) the code is 91 (this is defined by the OS)
         
 
     
     def ctxt(self, colour:str, txt:str) -> str:
+        """
+        This function colours the text printed on the terminal (the print command must be done on its own it just returns the format required to colour)
+
+        args:
+        `colour`: This is the colour that the user wants based on the self.colours dictionary
+        `txt`: The text the user WANTS to colour
+        """
         colour = colour.lower() # LOWER REMEMBER FOR DICT!
         if colour in self.colours:
             return f"\033[{self.colours.get(colour)}m{txt}\033[0m" #Return required ANSI format to colour text 
         return txt
     
     def btxt(self, txt:str) -> str:
+        """
+        This function bolds the text printed on the terminal; DOESN'T print it BUT returns the format required to bold text
+
+        args:
+        `txt`: This text the user WANTS to colour
+        """
         return f"\033[1m{txt}\033[0m"
     
     def itxt(self, txt:str) -> str:
@@ -38,24 +52,33 @@ class coltxt:
 ctext = coltxt()  
 
 def term_size() -> tuple:
+    """
+    This function will crab the terminal size from the function `os.get_terminal_size()`
+    Will return a tuple in the format (width, length)
+    """
     x = os.get_terminal_size()
     return x.columns, x.lines # width, length
 
 
 class GameState:
     def __init__(self):
-        self.door = "🚪"
-        self.path = "_"
-        self.character = "🧍"
-        self.crab = "🦀"
-        self.doorchoice = ""
-        self.rc, self.gch = self.updatedoorchoice() # Tells which door has a darkness (second worst choice), good choice
-        self.usrin = ""
-        self.level1_complete:bool = False
-        self.cnt = 0 # Count how mnay times the user picked ghost door
+        self.door = "🚪"         # Define door
+        self.path = "_"          # Define path (empty spots)
+        self.character = "🧍"    # Define Character 
+        self.crab = "🦀"         # Define Crab
+        self.doorchoice = ""  # Define Door choice with the ghosts!
+        self.rc, self.gch = self.updatedoorchoice()      # Tells which door has a darkness (second worst choice), good choice
+        self.usrin = ""       # Define what door choice the user picks
+        self.level1_complete:bool = False                # Is the level 1 complete?
+        self.cnt = 0          # Count how mnay times the user picked ghost door
         
 
     def binomial_expansion(self, number:int) -> tuple:
+        """
+        Takes in a number for the function: (a+number)^2. Using the formula a^2 + b^2 + 2ab. The value of a must be 1 always, b is 2ab or 2(number)
+        and c is c^2 or number^2
+        returns the tuple with values for A B and C 
+        """
         # Number will be the number an binomial expression that looks like this: (a+<number>)^2
         A = 1
         B = 2 * number
@@ -63,25 +86,47 @@ class GameState:
         return (A, B, C)
 
     def updatedoorchoice(self) -> tuple: #Door count to a max of 3 doors so only a,b,c required
-        choices = ['a', 'b', 'c']
-        n = random.randint(0, 2) # Pick a random number between 0,2 and map that to a letter\
-        x = random.randint(0,1) # Which door is bad after ghosts?
+        """
+        This function checks which choice is good, bad, and which choice cuts to scene 2 (or is the best choice)
+
+        Returns the bad choice and then the best choice
+        """
+        choices = ['a', 'b', 'c']              # Possible choices
+        n = random.randint(0, 2)               # Pick a random number between 0,2 and map that to a letter\
+        x = random.randint(0,1)                # Which door is bad after ghosts?
         self.doorchoice = choices[n]
         choices.remove(choices[n])
-        badch = str(choices[x]) # Bad choice (second worst)
+        badch = str(choices[x])                # Bad choice (second worst)
         choices.remove(badch)
         return badch, ''.join(choices)
 
     
     def resize(self, size:int) -> None: # Ask the user to resize their terminal so game works properly
-        while True:
-            os.system("clear")
-            w,l = term_size()
-            if w < size:
+        """
+        This function handles the resizing processes where the user must resize the terminal in order for the game to work properly.
+
+        args:
+        `size`: Integer value that tells what the size of the terminal (horizontally) must be
+        """
+        while True:                 # Repeat until the user resizes the terminal so it fits the `size` requirement
+            os.system("clear")      # Keep clearing the terminal so its not spamming lines
+            w,l = term_size()       # split into w,l as term_size() returns tuple. l is not required right now HOWEVER its there incase its required in the future
+            if w < size:            # Repeat until the terminal isn't resized enough
                 _ = input(ctext.btxt("Please resize window (horizontally), press enter once DONE"))
             else:
                 break
+
+
     def ancient_characters(self, text: str, time:float) -> None:
+        """
+        The main function to print the text. It works by overwriting the text 1 character at a time at a time interval to make it look realistic
+
+        args:
+        `text`: This is the text that must be printed one character at a time
+        `time`: This is the time interval for each character (before its printed)
+        """
+        # The function works by having a variable `newtxt`. theres a for loop that iterates over each character of 'text' and adds the character
+        # to `newtxt` which then gets printed and the cursor is returned to the front and the line is overwritten over and over until the text is done
         newtxt: str = ""
         for e in text:
             newtxt = newtxt+e
@@ -91,10 +136,14 @@ class GameState:
         
 
     def level1_scene1(self):
+        """
+        This is one of the scenes in level1. This is at the start
+        """
+        # Introduction; Talks about what the goal of the game is and what must NOT be done (dying)
         self.ancient_characters(ctext.itxt("You are trapped inside of a cave and have to escape! One wrong move and you DIE! "), 0.05)
         self.ancient_characters(ctext.itxt("Escape the cave without getting hurt "), 0.05)
-        time.sleep(2)
-        os.system("clear")
+        sleep(2)                  # Sleep to let the user read
+        os.system("clear")        # 
 
     def level1_scene2(self):
         a = time.perf_counter() # Start timer
@@ -147,7 +196,7 @@ class GameState:
                         if random.randint(0,1) == 1 or bgate == True:
                             binomial_number = random.randint(0,5)
                             self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hehehehe, Thanks knucklehead :), Runs away "),0.03)
-                            time.sleep(2)
+                            sleep(2)
                             os.system("clear")
                             print(ctext.itxt("A random little boy appears"))
                             self.ancient_characters(ctext.ctxt("yellow", "(Little Boy): I apologize for my dad. What did he do to you? "), 0.03)
@@ -161,9 +210,12 @@ class GameState:
                             while True:
                                 a1,b1,c1 = self.binomial_expansion(binomial_number)
                                 # print(a1, b1, c1)                                      # DEBUG TO FIND VALUES
-                                valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
-                                valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
-                                valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
+                                try:
+                                    valuea = int(input(ctext.btxt("(Little Boy) So whats the answer for a?: ")))
+                                    valueb = int(input(ctext.btxt("(Little Boy) So whats the answer for b?: ")))
+                                    valuec = int(input(ctext.btxt("(Little Boy) So whats the answer for c?: ")))
+                                except ValueError:
+                                    continue
 
                                 if valuea == a1 and valueb == b1 and valuec == c1:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): YES ! That's it! I will send you back now ! Oh yeah also the correct door is {self.gch.upper()} "), 0.03)
@@ -173,7 +225,7 @@ class GameState:
                                     self.ancient_characters(ctext.ctxt("yellow", f"(Little Boy): Hmmm! Lies! Try again if you want to go back "), 0.03)
                         else:
                             self.ancient_characters(ctext.ctxt("yellow",f"(Weary Traveler): Okay so listen. I will send you back, this time pick option {self.gch.upper()}. Vanishes "), 0.05)
-                            time.sleep(2)
+                            sleep(2)
 
                         os.system("clear")
                         b = time.perf_counter() # End Timer
@@ -184,7 +236,7 @@ class GameState:
                         self.ancient_characters(ctext.ctxt("yellow","(Weary Traveler): Hmm? No? I don't think you buddy "),0.05)
                         print(ctext.itxt("The weary traveler stabs and robs you."))
                         self.ancient_characters(ctext.itxt("You wake up to the same 3 doors. What? Was this a dream? "), 0.03)
-                        time.sleep(2)
+                        sleep(2)
 
 
 
@@ -342,7 +394,7 @@ class GameState:
             if matrix[d_plyr_pos[0]][d_plyr_pos[1]] == 3:
                 os.system("clear")
                 self.ancient_characters(ctext.itxt("There is a crab under this ! You cannot go there ! Try again "), 0.04)
-                time.sleep(2)
+                sleep(2)
                 return matrix
             
             elif matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 3 and matrix[d_plyr_pos[0]][d_plyr_pos[1]] != 2:
@@ -365,7 +417,7 @@ class GameState:
             if matrix[u_plyr_pos[0]][u_plyr_pos[1]] == 3:
                 os.system("clear")
                 self.ancient_characters(ctext.itxt("There is a crab above this ! You cannot go there ! Try again "), 0.04)
-                time.sleep(2)
+                sleep(2)
                 return matrix
             
             elif matrix[u_plyr_pos[0]][u_plyr_pos[1]] != 3 and matrix[u_plyr_pos[0]][u_plyr_pos[1]] != 2:
@@ -391,7 +443,7 @@ class GameState:
             if matrix[l_plyr_pos[0]][l_plyr_pos[1]] == 3:
                 os.system("clear")
                 self.ancient_characters(ctext.itxt("There is a crab on the left ! You cannot go there ! Try again "), 0.04)
-                time.sleep(2)
+                sleep(2)
                 return matrix
             
             elif matrix[l_plyr_pos[0]][l_plyr_pos[1]] != 3 and matrix[l_plyr_pos[0]][l_plyr_pos[1]] != 2:
@@ -417,7 +469,7 @@ class GameState:
             if matrix[r_plyr_pos[0]][r_plyr_pos[1]] == 3:
                 os.system("clear")
                 self.ancient_characters(ctext.itxt("There is a crab on the right ! You cannot go there ! Try again "), 0.04)
-                time.sleep(2)
+                sleep(2)
                 return matrix
             
             elif matrix[r_plyr_pos[0]][r_plyr_pos[1]] != 3 and matrix[r_plyr_pos[0]][r_plyr_pos[1]] != 2:
