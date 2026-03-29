@@ -73,7 +73,40 @@ class creation:
         s.create_rectangle(x-10, y-height, x+70, y-height+20, fill=self.PIPE, outline=self.PIPE_DARK, width=2) # Draw a small rectangle on top to make it look like a pipe
         s.create_line(x+30, y-height, x+30, y, fill=self.PIPE_DARK, width=2) # Split shape from centre to make it look like a pipe (add highlights)
     
-    def draw_mario()
+    def draw_mario(self, x,y,scale=2):
+        pixels = [
+            "....RRRRRR....",
+            "...RRRRRRRR...",
+            "...RRR..RRR...",
+            "..SSSSSSSSS...",
+            "..SSS..SSS....",
+            "..SSSSSSSS....",
+            "...BBBBBBB....",
+            "..RBBBBBBR....",
+            ".RRRBBBBRRR...",
+            ".RRBBBBBBRR...",
+            "..BBBBBBBB....",
+            "..BB..BB......",
+            ".BBB..BBB.....",
+            ".BB....BB.....",
+        ] # This will mapp the mario sprite
+        color_map = {
+            "R": self.MARIO_RED,
+            "B": self.MARIO_BROWN,
+            "S": self.MARIO_SKIN,
+            ".": None,
+        }  # Define what colour to be used 
+
+        ixr = []
+        for r,l in enumerate(pixels): # Map over each pixel/character
+            for col, ch in enumerate(l): 
+                color = color_map.get(ch) # Map each pixel/character to a colour
+                if color: # For valid colours
+                    x0 = x+col*scale # Define coords
+                    y0 = y+r*scale 
+                    ixr.append(s.create_rectangle(x0,y0,x0+scale, y0+scale, fill=color, outline=color)) # Append the colours into a list for use
+        return ixr
+
 
         
 
@@ -82,7 +115,8 @@ class creation:
     
 
 class_call = creation()
-class_call.draw_pipe(520,520)
+class_call.draw_mario(520,300)
+# class_call.draw_pipe(520,520)
 # class_call.draw_question_block(20,20)
 # class_call.draw_brick(360-40, height-220)
 # class_call.draw_ground()
