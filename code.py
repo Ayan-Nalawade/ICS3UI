@@ -7,7 +7,8 @@ import math
 r = Tk()
 r.title("Mario Yeehaw")
 
-s = Canvas(r, width=800, height=600, bg="#5C94FC")
+height = 600
+s = Canvas(r, width=800, height=height, bg="#5C94FC")
 s.pack()
 
 class creation:
@@ -48,6 +49,7 @@ class creation:
 class_call = creation()
 class_call.clouds(90,80, 1.1)
 
+class_call.draw_hill(40, height-120, 160,120)
 
 
 
