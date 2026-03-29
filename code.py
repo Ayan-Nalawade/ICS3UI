@@ -106,16 +106,14 @@ class creation:
                     y0 = y+r*scale 
                     ixr.append(s.create_rectangle(x0,y0,x0+scale, y0+scale, fill=color, outline=color)) # Append the colours into a list for use
         return ixr
-
-
-        
-
-
-        
     
+    def draw_goomba(self, x,y):
+        ixr = []
+        ixr.append(s.create_oval(x, y-18, x+30, y+8, fill=self.GOOMBA, outline=self.GOOMBA_DARK, width=2))
+        
 
 class_call = creation()
-class_call.draw_mario(520,300)
+class_call.draw_goomba(520,300)
 # class_call.draw_pipe(520,520)
 # class_call.draw_question_block(20,20)
 # class_call.draw_brick(360-40, height-220)
