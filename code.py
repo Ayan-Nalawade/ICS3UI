@@ -8,7 +8,8 @@ r = Tk()
 r.title("Mario Yeehaw")
 
 height = 600
-s = Canvas(r, width=800, height=height, bg="#5C94FC")
+width = 800
+s = Canvas(r, width=width, height=height, bg="#5C94FC")
 s.pack()
 
 class creation:
@@ -42,14 +43,29 @@ class creation:
         s.create_oval(x + 10 * scale, y + 10 * scale, x + 60 * scale, y + 40 * scale, fill=self.CLOUD_SHADOW, outline=self.CLOUD_SHADOW) # Add a light blue oval slightly under the cloud to make it look like a real detailed cloud
     
     def draw_hill(self, x,y,w,h):
-        s.create_oval(x, y-h, x+w, y+h, fill=self.HILL, outline=self.HILL)
+        s.create_oval(x, y-h, x+w, y+h, fill=self.HILL, outline=self.HILL) # Draw hill region anchored to the height and width of the screen
+    
+    def draw_ground(self):
+        bw = 50 # Brick width
+        bh = 40 # Brick height
+
+        y0 = height-80
+        rows = 2
+        for r in range(rows):
+            y = y0 + r * bh # update brick values 
+            for c in range(width//bw + 2):
+                x = c*bw # update brick values so their drawn side by side
+                s.create_rectangle(x, y, x+bw, y + bh, fill=self.GROUND, outline=self.GROUND_DARK, width=2)
+                s.create_line(x + bw /2, y, x+bw/2, y+bh, fill=self.GROUND_DARK, width=2) # Split boxes more; draws a line through the rectangles to split them more. Kind of like a circle being split up
+    
         
     
 
 class_call = creation()
-class_call.clouds(90,80, 1.1)
+class_call.draw_ground()
+# class_call.clouds(90,80, 1.1)
 
-class_call.draw_hill(40, height-120, 160,120)
+# class_call.draw_hill(40, height-120, 160,120)
 
 
 
