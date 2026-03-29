@@ -62,14 +62,29 @@ class creation:
         s.create_rectangle(x, y, x+size, y+size, fill=self.BRICK, outline=self.BRICK_DARK, width=2)
         s.create_rectangle(x, y+size/2, x+size, y+size/2, fill=self.BRICK, outline=self.BRICK_DARK, width=2) # "Split" to get the classical mario blocks
         s.create_rectangle(x+size/2, y, x+size/2, y+size/2, fill=self.BRICK_DARK, width=2) # Draw a new brick underneath  <small brick><small brick> \n <brick>
-        s.create_rectangle(x + size/2, y+size/2, x+size, y+size/2, fill=self.BRICK_DARK, width=2) # Draw another rectangle 
+        s.create_rectangle(x + size/2, y+size/2, x+size, y+size/2, fill=self.BRICK_DARK, width=2) # Draw another rectangle <small brick><hightlight><smallbrick><highlight underneath> \n <brick>\
+    
+    def draw_question_block(self, x,y,size=40):
+        s.create_rectangle(x, y, x+size, y+size, fill=self.QUESTION, outline=self.QUESTION_DARK, width=2) # Draw the coin box
+        s.create_text(x+size/2, y+size/2, text="?", font=("Helvetica", 20, "bold"), fill="#3B2A00") # Draw the ? inside of the block
+    
+    def draw_pipe(self, x,y,height=120):
+        s.create_rectangle(x, y-height, x+60,y, fill=self.PIPE, outline=self.PIPE_DARK, width=2) # Draw rectangle
+        s.create_rectangle(x-10, y-height, x+70, y-height+20, fill=self.PIPE, outline=self.PIPE_DARK, width=2) # Draw a small rectangle on top to make it look like a pipe
+        s.create_line(x+30, y-height, x+30, y, fill=self.PIPE_DARK, width=2) # Split shape from centre to make it look like a pipe (add highlights)
+    
+    def draw_mario()
+
+        
 
 
         
     
 
 class_call = creation()
-class_call.draw_brick(360-40, height-220)
+class_call.draw_pipe(520,520)
+# class_call.draw_question_block(20,20)
+# class_call.draw_brick(360-40, height-220)
 # class_call.draw_ground()
 # class_call.clouds(90,80, 1.1)
 
