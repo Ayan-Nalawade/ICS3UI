@@ -1,3 +1,5 @@
+# UPDATE CODE FROM INITAL WITH COMMENTS AND BETTER READABILITY
+
 from tkinter import *
 import time
 import math 
@@ -30,13 +32,22 @@ class creation:
         self.GOOMBA_DARK = "#7A3B12"
         self.HUD = "#FFFFFF"
         self.COIN = "#F7D000"
+
+    def clouds(self, x, y, scale = 1.0) -> None:
+        w = 70 * scale
+        h = 30 * scale 
+        s.create_oval(x, y, x+w, y + h, fill=self.CLOUD, outline=self.CLOUD)
+        s.create_oval(x + 25 * scale, y-10 * scale, x+85 * scale, y + 25 * scale, fill=self.CLOUD, outline=self.CLOUD) # Add the illusion that theres two clouds 
+        s.create_oval(x + 10 * scale, y + 10 * scale, x + 60 * scale, y + 40 * scale, fill=self.CLOUD_SHADOW, outline=self.CLOUD_SHADOW) # Add a light blue oval slightly under the cloud to make it look like a real detailed cloud
     
-    def setupHUD(self) -> None:
-        s.create_text(60, 30, text="MARIO", fill=self.HUD, font=("Helvetica", 16, "bold"))
+    def draw_hill(self, x,y,w,h):
+        s.create_oval(x, y-h, x+w, y+h, fill=self.HILL, outline=self.HILL)
         
     
 
 class_call = creation()
+class_call.clouds(90,80, 1.1)
+
 
 
 
