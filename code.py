@@ -58,11 +58,19 @@ class creation:
                 s.create_rectangle(x, y, x+bw, y + bh, fill=self.GROUND, outline=self.GROUND_DARK, width=2)
                 s.create_line(x + bw /2, y, x+bw/2, y+bh, fill=self.GROUND_DARK, width=2) # Split boxes more; draws a line through the rectangles to split them more. Kind of like a circle being split up
     
+    def draw_brick(self, x,y,size=40):
+        s.create_rectangle(x, y, x+size, y+size, fill=self.BRICK, outline=self.BRICK_DARK, width=2)
+        s.create_rectangle(x, y+size/2, x+size, y+size/2, fill=self.BRICK, outline=self.BRICK_DARK, width=2) # "Split" to get the classical mario blocks
+        s.create_rectangle(x+size/2, y, x+size/2, y+size/2, fill=self.BRICK_DARK, width=2) # Draw a new brick underneath  <small brick><small brick> \n <brick>
+        s.create_rectangle(x + size/2, y+size/2, x+size, y+size/2, fill=self.BRICK_DARK, width=2) # Draw another rectangle 
+
+
         
     
 
 class_call = creation()
-class_call.draw_ground()
+class_call.draw_brick(360-40, height-220)
+# class_call.draw_ground()
 # class_call.clouds(90,80, 1.1)
 
 # class_call.draw_hill(40, height-120, 160,120)
