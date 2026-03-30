@@ -258,10 +258,9 @@ class creation:
 
     
     def __remove_speech(self):  # Remove current speech text if present.
-        global speech_id  
-        if speech_id is not None:  
-            s.delete(speech_id)  
-            speech_id = None  
+        global speech_id   
+        s.delete(speech_id)
+        speech_id
 
     
     def __clear_speech(self):  
