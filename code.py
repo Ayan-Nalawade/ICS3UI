@@ -34,8 +34,14 @@ class creation:
         self.GOOMBA_DARK = "#7A3B12"
         self.HUD = "#FFFFFF"
         self.COIN = "#F7D000"
+        self.brick_y = height-220 # Y coords anchored to screen size
+        self.brick_x = 360 # X coords anchored to screen size
+        self.pipe_x = 140 # X coords for the pipe
+        self.pipe_y = height-80 # Y coords for the pipe anchored to the screen size
+        self.mario_x = self.pipe_x + 20 # X coords for mario anchored to the pipe
+        self.mario_y = self.pipe_y - 120 - 28 # Y coords for mario anchored to the pipe
 
-    def clouds(self, x, y, scale = 1.0) -> None:
+    def draw_clouds(self, x, y, scale = 1.0) -> None:
         w = 70 * scale
         h = 30 * scale 
         s.create_oval(x, y, x+w, y + h, fill=self.CLOUD, outline=self.CLOUD)
@@ -109,11 +115,106 @@ class creation:
     
     def draw_goomba(self, x,y):
         ixr = []
-        ixr.append(s.create_oval(x, y-18, x+30, y+8, fill=self.GOOMBA, outline=self.GOOMBA_DARK, width=2))
-        
+        ixr.append(s.create_oval(x, y-18, x+30, y+8, fill=self.GOOMBA, outline=self.GOOMBA_DARK, width=2)) # Draw circle to draw outline for goomba
+        ixr.append(s.create_oval(x+6, y-8, x+12, y-2, fill="white", outline="white")) # Left eye
+        ixr.append(s.create_oval(x+18, y-8, x+24, y-2, fill="white", outline="white")) # Right eye
+        ixr.append(s.create_oval(x+8, y-6, x+10, y-4, fill="black", outline="black")) # Left eyeball
+        ixr.append(s.create_oval(x+20,y-6,x+22,y-4, fill="black", outline="black")) # Right eyeball
+        return ixr
+    
+    def draw_screen(self):
+        self.draw_clouds(90,80,1.1)
+        self.draw_clouds(520, 90, 1.4)
+
+        hb = height - 120 # Hill base
+        self.draw_hill(10, hb, 160, 120)
+        self.draw_hill(520, hb + 10, 120, 90)
+
+        self.draw_ground()
+
+
+
+        self.draw_pipe(self.pipe_x, self.pipe_y, 120)
+
+        # Place mario on TOP of the pipe
+        mario_ixr = self.draw_mario(self.mario_x, self.mario_y, 2)
+
+        # Brick row + question block for mario to jump
+        self.draw_brick(self.brick_x-40, self.brick_y)
+        self.draw_question_block(self.brick_x, self.brick_y)
+        self.draw_brick(self.brick_x+40, self.brick_y)
+        self.draw_brick(self.brick_x+80, self.brick_y)
+
+        # Goombas !
+        goomba1 = self.draw_goomba(560, height-95)
+        goomba2 = self.draw_goomba(610, height-95)
+
+        return mario_ixr, goomba1, goomba2
+    
+    def __move_items(self, ixr, x, y): # Private function so I don't accidently use it
+        for i in ixr:
+            s.move(i, x, y) # Move to the new x and y coords
+    
+    def __set_mario_pos(x, y):
+        global speech_id
+
+    
+    def draw_animation(self, m, g1, g2): # IXR values for mario (m) , goomba1 (g1) , goomba2 (g2)
+        # Animation constants
+        MARIO_W:int = 32
+        MARIO_H:int = 28
+        GOOMBA_W:int = 30
+        GOOMBA_TOP_OFFSET:int = -18
+        GOOMBA_BOB_AMPLITUDE:int = 9
+        GOOMBA_BOB_SPEED:float = 6.0
+
+        mario_state = {
+            "x":float(self.mario_x),
+            "y":float(self.mario_y),
+            "jump":None,
+            "run":None
+        } # Define mario's physics, including location
+
+        goombas = [
+            {
+                "x": 560.0,
+                "base_y": float(height - 95),
+                "offset": 0.0,
+                "phase": 0.0,
+                "alive": True,
+                "ids": g1,
+            },
+            {
+                "x": 610.0,
+                "base_y": float(height - 95),
+                "offset": 0.0,
+                "phase": math.pi,
+                "alive": True,
+                "ids": g2,
+            },
+        ] # Define the goomba physics including location
+
+        eld:float = 0.0 # Elapsed time 
+        last_tick = time.perf_counter()
+        speech_id = None
+        bomb_ixr = []
+        bf_t:float = 0.0 #Bomb fuse time
+        bf_td:float = 2.4 # Bomb fuse duration
+        sm = "main" # Sequence
+
+        gty = height-80 # Define the y coords for the ground TOP
+        gmy = gty-MARIO_H # Setup mario ground coordinates
+
+
+
+
+
+
 
 class_call = creation()
-class_call.draw_goomba(520,300)
+q,e,r = class_call.draw_screen()
+class_call.draw_animation(q,e,r)
+# class_call.draw_goomba(520,300)
 # class_call.draw_pipe(520,520)
 # class_call.draw_question_block(20,20)
 # class_call.draw_brick(360-40, height-220)
