@@ -299,8 +299,6 @@ class creation:
 
     def animate_bomb_fuse(self, dt):  
         global bft  
-        if len(bomb_ixr) != 3:
-            return  # Exit if bomb is incomplete. Shouldn't happen unless external interference or a bug.
 
         body, fuse, spark = bomb_ixr  
         bft = min(self.bf_td, bft + dt)  
