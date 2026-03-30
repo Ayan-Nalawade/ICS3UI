@@ -414,7 +414,7 @@ class creation:
                 "offset": 0.0,
                 "phase": 0.0,
                 "alive": True,
-                "ids": goomba1_ixr,
+                "ids": goomba1_ixr
             },
             {
                 "x": 610.0,
@@ -422,7 +422,7 @@ class creation:
                 "offset": 0.0,
                 "phase": math.pi,
                 "alive": True,
-                "ids": goomba2_ixr,
+                "ids": goomba2_ixr
             },
         ]
 
