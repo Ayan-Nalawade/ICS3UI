@@ -212,9 +212,6 @@ class creation:
         return goomba["base_y"] + self.__goomba_offset_at(t, goomba) + self.GOOMBA_TOP_OFFSET  # Base + bob + offset.
 
     def __kill_goomba(self, goomba):  # Not exactly kill, just squash
-        if not goomba["alive"]:  # Ignore if already dead. Shouldn't ideally happen unless external intervention from the code
-            return  
-
         goomba["alive"] = False  # Mark goomba dead.
         for item_id in goomba["ids"]:  # Remove all existing goomba parts.
             s.delete(item_id)  # Delete one goomba canvas item.
