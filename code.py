@@ -196,9 +196,9 @@ class creation:
     
     def __set_mario_pos(self, x, y):  
         global speech_id  # Use global speech bubble
-        x = x - mario_state["x"]  # Compute mario delta x.
-        y = y - mario_state["y"]  # Compute mario delta y.
-        self.__move_items(self.mario_ixr, x, y)  # Shift all mario pixels.
+        dx = x - mario_state["x"]  # Compute mario delta x.
+        dy = y - mario_state["y"]  # Compute mario delta y.
+        self.__move_items(self.mario_ixr, dx, dy)  # Shift all mario pixels.
         mario_state["x"] = x  # Store new mario x.
         mario_state["y"] = y  # Store new mario y.
         # Store into central variable
