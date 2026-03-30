@@ -41,6 +41,18 @@ class creation:
         self.mario_x = self.pipe_x + 20 # X coords for mario anchored to the pipe
         self.mario_y = self.pipe_y - 120 - 28 # Y coords for mario anchored to the pipe
 
+        # Animation constants
+        self.MARIO_W:int = 32
+        self.MARIO_H:int = 28
+        self.GOOMBA_W:int = 30
+        self.GOOMBA_TOP_OFFSET:int = -18
+        self.GOOMBA_BOB_AMPLITUDE:int = 9
+        self.GOOMBA_BOB_SPEED:float = 6.0
+
+
+        self.gty = height-80 # Define the y coords for the ground TOP
+        self.gmy = self.gty-self.MARIO_H # Setup mario ground coordinates
+
     def draw_clouds(self, x, y, scale = 1.0) -> None:
         w = 70 * scale
         h = 30 * scale 
@@ -151,22 +163,94 @@ class creation:
 
         return mario_ixr, goomba1, goomba2
     
-    def __move_items(self, ixr, x, y): # Private function so I don't accidently use it
+    # Private classes because they use and update global variables. Don't want to run into issues
+    def __move_items(self, ixr, x, y): 
         for i in ixr:
             s.move(i, x, y) # Move to the new x and y coords
     
-    def __set_mario_pos(x, y):
+    def __set_mario_pos(self, ixr, x, y):
         global speech_id
+        nx = x - mario_state["x"]
+        ny = y - mario_state["y"]
+        self.__move_items(ixr, nx, ny)
+        mario_state["x"] = nx
+        mario_state["y"] = ny 
+        if speech_id is not None:
+            s.coords(speech_id, nx + 10, ny - 10)
+    
+    def __goomba_offset_at(self, t):
+        return self.GOOMBA_BOB_AMPLITUDE * math.sin(t * self.GOOMBA_BOB_SPEED + goombas["phase"])
+    
+    def __goomba_top_at(self, t):
+        return goombas["base_y"] + self.__goomba_offset_at(t) + self.GOOMBA_TOP_OFFSET
+    
+    def __kill_goomba(self):
+        if not goombas["alive"]:
+            return 
+        
+        goombas["alive"] = False
+        for itid in goombas["ids"]: # Delete them individually
+            s.delete(itid)
+        
+        y_coor = goombas["base_y"] + goombas["offset"]
+        x = goombas["x"]
+        squashed = s.create_oval(
+            x,
+            y_coor - 5,
+            x + self.GOOMBA_W,
+            y_coor+6,
+            fill=self.GOOMBA_DARK,
+            outline=self.GOOMBA_DARK
+        )
+        goombas["ids"] = [squashed]
+
+    def __jump_to(self, tx, ty, duration, height, on_complete=None): # Get the target x and y values with height and duration
+        mario_state["jump"] = {
+            "state_time": eld,
+            "duration": duration,
+            "sx": mario_state["x"],
+            "sy": mario_state["y"],
+            "tx": tx,
+            "ty": ty,
+            "height": height,
+            "on_complete": on_complete
+        }
+
+    def __run_right(self, speed):
+        mario_state["run"] = {"speed":speed}
+    
+    def __run_left(self, speed):
+        mario_state["run"] = {"speed": -speed}
+
+    def __exit_right(self):
+        global sequence_state
+        sequence_state = "exiting"
+        self.__run_right(255.0)
+    
+    def __jump_to_ground(self):
+        tx = mario_state["x"] + 44
+        self.__jump_to(tx, self.gmy, duration=0.8, height=70.0, on_complete=self.__exit_right)
+    
+    def __clear_speech(self):
+        global speech_id
+        speech_id = s.create_text(
+            mario_state["x"] + 10,
+            mario_state["y"] - 16,
+            text="Yeehaw~ uh.. Mario!",
+            fill=self.HUD,
+            font=("Helvetica", 16, "bold"),
+            anchor="s"
+        )
+        r.after(1400, self.__clear_speech())
+        r.after(1400, self.__jump_to_ground())
+
+
 
     
     def draw_animation(self, m, g1, g2): # IXR values for mario (m) , goomba1 (g1) , goomba2 (g2)
-        # Animation constants
-        MARIO_W:int = 32
-        MARIO_H:int = 28
-        GOOMBA_W:int = 30
-        GOOMBA_TOP_OFFSET:int = -18
-        GOOMBA_BOB_AMPLITUDE:int = 9
-        GOOMBA_BOB_SPEED:float = 6.0
+        global mario_state
+        global goombas
+        global eld
 
         mario_state = {
             "x":float(self.mario_x),
@@ -202,8 +286,7 @@ class creation:
         bf_td:float = 2.4 # Bomb fuse duration
         sm = "main" # Sequence
 
-        gty = height-80 # Define the y coords for the ground TOP
-        gmy = gty-MARIO_H # Setup mario ground coordinates
+
 
 
 
