@@ -69,6 +69,62 @@ class creation:
         self.gmy = self.gty - self.MARIO_H  # Mario Y when standing on ground.
 
         self.mario_ixr = []  # Canvas ids for mario sprite pixels. These allow easy modification (saved as pointers)
+        self.item_specs = {}  # Store per-item draw data for delete-and-redraw moves.
+
+    def __track_rect(self, x1, y1, x2, y2, fill, outline, width):
+        if width is None:
+            item_id = s.create_rectangle(x1, y1, x2, y2, fill=fill, outline=outline)
+        else:
+            item_id = s.create_rectangle(x1, y1, x2, y2, fill=fill, outline=outline, width=width)
+
+        self.item_specs[item_id] = {
+            "type": "rectangle",
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
+            "fill": fill,
+            "outline": outline,
+            "width": width,
+        }
+        return item_id
+
+    def __track_oval(self, x1, y1, x2, y2, fill, outline, width):
+        if width is None:
+            item_id = s.create_oval(x1, y1, x2, y2, fill=fill, outline=outline)
+        else:
+            item_id = s.create_oval(x1, y1, x2, y2, fill=fill, outline=outline, width=width)
+
+        self.item_specs[item_id] = {
+            "type": "oval",
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
+            "fill": fill,
+            "outline": outline,
+            "width": width,
+        }
+        return item_id
+
+    def __track_line(self, x1, y1, x2, y2, fill, width):
+        item_id = s.create_line(x1, y1, x2, y2, fill=fill, width=width)
+        self.item_specs[item_id] = {
+            "type": "line",
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
+            "fill": fill,
+            "outline": None,
+            "width": width,
+        }
+        return item_id
+
+    def __forget_items(self, ixr):
+        for item_id in ixr:
+            if item_id in self.item_specs:
+                del self.item_specs[item_id]
 
     def draw_clouds(self, x, y, scale=1.0) -> None:  
         w = 70 * scale  # Base cloud width adjusted by scale.
@@ -153,16 +209,16 @@ class creation:
                 if color:  # Only draw non-empty sprite cells. So "." shouldn't be included or should be blank
                     x0 = x + col * scale  # Compute pixel left X based on scale.
                     y0 = y + row * scale  # Compute pixel top Y based on scale.
-                    ixr.append(s.create_rectangle(x0, y0, x0 + scale, y0 + scale, fill=color, outline=color))  # Draw one pixel block.
+                    ixr.append(self.__track_rect(x0, y0, x0 + scale, y0 + scale, color, color, None))  # Draw one pixel block.
         return ixr  # Return mario canvas ids.
 
     def draw_goomba(self, x, y):  
         ixr = []  # Collect goomba canvas ids.
-        ixr.append(s.create_oval(x, y - 18, x + 30, y + 8, fill=self.GOOMBA, outline=self.GOOMBA_DARK, width=2))  # Body oval.
-        ixr.append(s.create_oval(x + 6, y - 8, x + 12, y - 2, fill="white", outline="white"))  # Left eye.
-        ixr.append(s.create_oval(x + 18, y - 8, x + 24, y - 2, fill="white", outline="white"))  # Right eye.
-        ixr.append(s.create_oval(x + 8, y - 6, x + 10, y - 4, fill="black", outline="black"))  # Left eyeball.
-        ixr.append(s.create_oval(x + 20, y - 6, x + 22, y - 4, fill="black", outline="black"))  # Right eyeball.
+        ixr.append(self.__track_oval(x, y - 18, x + 30, y + 8, self.GOOMBA, self.GOOMBA_DARK, 2))  # Body oval.
+        ixr.append(self.__track_oval(x + 6, y - 8, x + 12, y - 2, "white", "white", None))  # Left eye.
+        ixr.append(self.__track_oval(x + 18, y - 8, x + 24, y - 2, "white", "white", None))  # Right eye.
+        ixr.append(self.__track_oval(x + 8, y - 6, x + 10, y - 4, "black", "black", None))  # Left eyeball.
+        ixr.append(self.__track_oval(x + 20, y - 6, x + 22, y - 4, "black", "black", None))  # Right eyeball.
         return ixr  # Return goomba canvas ids.
 
     def draw_screen(self):  
@@ -190,8 +246,31 @@ class creation:
 
     # Private class to ensure its not called from outside as it can cause conflicts (I caught a few crashes)
     def __move_items(self, ixr, x, y):  # Translate a list of canvas items.
-        for item_id in ixr:  # Iterate all item ids.
-            s.move(item_id, x, y)  # Move one item by delta x/y (difference). special command that deletes for us
+        for index, item_id in enumerate(ixr):  # Iterate all item ids.
+            spec = self.item_specs.get(item_id)
+            if spec is None:
+                continue
+
+            x1 = spec["x1"] + x
+            y1 = spec["y1"] + y
+            x2 = spec["x2"] + x
+            y2 = spec["y2"] + y
+            fill = spec["fill"]
+            outline = spec["outline"]
+            width = spec["width"]
+            item_type = spec["type"]
+
+            s.delete(item_id)
+            del self.item_specs[item_id]
+
+            if item_type == "rectangle":
+                new_id = self.__track_rect(x1, y1, x2, y2, fill, outline, width)
+            elif item_type == "oval":
+                new_id = self.__track_oval(x1, y1, x2, y2, fill, outline, width)
+            else:
+                new_id = self.__track_line(x1, y1, x2, y2, fill, width)
+
+            ixr[index] = new_id
 
     
     def __set_mario_pos(self, x, y):  
@@ -215,16 +294,18 @@ class creation:
         goomba["alive"] = False  # Mark goomba dead.
         for item_id in goomba["ids"]:  # Remove all existing goomba parts.
             s.delete(item_id)  # Delete one goomba canvas item.
+        self.__forget_items(goomba["ids"])
 
         y_now = goomba["base_y"] + goomba["offset"]  # Current goomba body Y.
         x = goomba["x"]  # Current goomba body X.
-        squashed = s.create_oval(  # Draw flattened goomba body.
+        squashed = self.__track_oval(  # Draw flattened goomba body.
             x,
             y_now - 5,
             x + self.GOOMBA_W,
             y_now + 6,
-            fill=self.GOOMBA_DARK,
-            outline=self.GOOMBA_DARK,
+            self.GOOMBA_DARK,
+            self.GOOMBA_DARK,
+            None,
         )
         goomba["ids"] = [squashed]  # Replace id list with squashed sprite.
 
@@ -283,9 +364,9 @@ class creation:
 
         bx = mario_state["x"] - 10  # Bomb base x near mario hand.
         by = mario_state["y"] + 20  # Bomb base y near mario hand.
-        body = s.create_oval(bx, by, bx + 16, by + 16, fill="#1D1D1D", outline="#000000", width=2)  # Bomb body.
-        fuse = s.create_line(bx + 12, by + 1, bx + 20, by - 8, fill="#222222", width=2)  # Fuse line.
-        spark = s.create_oval(bx + 19, by - 10, bx + 23, by - 6, fill="#FFD44D", outline="#FF8C00")  # Spark tip.
+        body = self.__track_oval(bx, by, bx + 16, by + 16, "#1D1D1D", "#000000", 2)  # Bomb body.
+        fuse = self.__track_line(bx + 12, by + 1, bx + 20, by - 8, "#222222", 2)  # Fuse line.
+        spark = self.__track_oval(bx + 19, by - 10, bx + 23, by - 6, "#FFD44D", "#FF8C00", None)  # Spark tip.
 
         bomb_ixr = [body, fuse, spark]  
         bft = 0.0  
@@ -294,6 +375,7 @@ class creation:
         global bomb_ixr, bft  
         for item_id in bomb_ixr:  
             s.delete(item_id)  
+        self.__forget_items(bomb_ixr)
         bomb_ixr = []  
         bft = 0.0  
 
@@ -304,7 +386,13 @@ class creation:
         bft = min(self.bf_td, bft + dt)  
         p = bft / self.bf_td  
 
-        bx1, by1, bx2, _ = s.coords(body)  
+        body_spec = self.item_specs.get(body)
+        if body_spec is None:
+            return
+
+        bx1 = body_spec["x1"]
+        by1 = body_spec["y1"]
+        bx2 = body_spec["x2"]
         start_x = bx1 + 12  # Fuse start x at bomb top-right.
         start_y = by1 + 2  # Fuse start y at bomb top edge.
 
@@ -315,19 +403,41 @@ class creation:
 
         end_x = far_x + (near_x - far_x) * p
         end_y = far_y + (near_y - far_y) * p  
-        s.coords(fuse, start_x, start_y, end_x, end_y)  # Update fuse line.
 
         fuse_color = "#F5A623" if p > 0.35 else "#3A2A1A"  # Brighten fuse after initial burn.
 
-        pulse = 2.1 + 0.9 * (0.5 + 0.5 * math.sin(eld * 38.0))  
-        s.coords(spark, end_x - pulse, end_y - pulse, end_x + pulse, end_y + pulse)  
+        s.delete(fuse)
+        if fuse in self.item_specs:
+            del self.item_specs[fuse]
 
-        if int(eld * 22) % 3 == 0:  # Spark color frame A.
-            s.itemconfig(spark, fill="#FFE36C", outline="#FF7A00")  # Apply warm yellow/orange.
-        elif int(eld * 22) % 3 == 1:  # Spark color frame B.
-            s.itemconfig(spark, fill="#FFC94A", outline="#FF5A00")  # Apply deeper orange.
-        else:  # Spark color frame C.
-            s.itemconfig(spark, fill="#FFF2B3", outline="#FF8C00")  # Apply bright pale yellow.
+        new_fuse = self.__track_line(start_x, start_y, end_x, end_y, fuse_color, 2)
+        bomb_ixr[1] = new_fuse
+
+        pulse = 2.1 + 0.9 * (0.5 + 0.5 * math.sin(eld * 38.0))
+        spark_fill = "#FFE36C"
+        spark_outline = "#FF7A00"
+
+        if int(eld * 22) % 3 == 1:  # Spark color frame B.
+            spark_fill = "#FFC94A"
+            spark_outline = "#FF5A00"
+        elif int(eld * 22) % 3 == 2:  # Spark color frame C.
+            spark_fill = "#FFF2B3"
+            spark_outline = "#FF8C00"
+
+        s.delete(spark)
+        if spark in self.item_specs:
+            del self.item_specs[spark]
+
+        new_spark = self.__track_oval(
+            end_x - pulse,
+            end_y - pulse,
+            end_x + pulse,
+            end_y + pulse,
+            spark_fill,
+            spark_outline,
+            None,
+        )
+        bomb_ixr[2] = new_spark
 
     def reenter_with_bomb(self):  # Bring mario back from right carrying bomb.
         global sm  
@@ -352,6 +462,7 @@ class creation:
 
         def wipe_scene():  # Replace level graphics with boom message.
             s.delete("all")  # Clear all canvas items.
+            self.item_specs = {}
             s.configure(bg="#1A120E")  # Set dark background color.
             s.create_text(width / 2, height / 2 - 18, text="BOOM!", fill="#FFB347", font=("Helvetica", 58, "bold"))  
             s.create_text(width / 2, height / 2 + 34, text="The map exploded.", fill="#FFE4C4", font=("Helvetica", 22, "bold"))  
