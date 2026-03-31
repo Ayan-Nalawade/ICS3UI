@@ -1,22 +1,24 @@
 # UPDATE CODE FROM INITIAL WITH COMMENTS AND BETTER READABILITY 
 # AND IT WAS FREEZING FOR SOME REASON
+# FOR MR.SCHATTMAN: I forgot to ask this so I will just add explaination. I am using r.after instead of time.sleep because it caused freezing issues
+# Its also better in terms of smoothness, since time.sleep freezes the entire program. .after doesn't, it will keep the rest of the window running.
 
-from tkinter import * 
+from tkinter import *  
 import math  
-import time
+import time  
 
-r = Tk()  
-r.title("Mario Yeehaw")  # Set the title shown in the window bar.
+r = Tk()  # Create the main Tk window. We are splitting it up so we can "unlock" additional commands
+r.title("Mario Yeehaw")  
 
-height = 600  
-width = 800  
-s = Canvas(r, width=width, height=height, bg="#5C94FC", highlightthickness=0)  # Create the drawing canvas.
-s.pack()  # Attach the canvas to the Tk window layout.
+height = 600  # Canvas height in pixels.
+width = 800  # Canvas width in pixels.
+s = Canvas(r, width=width, height=height, bg="#5C94FC")  
+s.pack()  
 
 # Shared animation state
 mario_state = {}  # Store mario position and current movement state.
 goombas = []  # Store per-goomba animation and sprite data.
-eld = 0.0  
+eld = 0.0  # Elapsed time in seconds.
 lt = 0.0  # Last frame timestamp used to compute delta-time (time difference).
 speech_id = None  # Canvas item id for mario speech text (Yeehaw~ uh...Mario!).
 bomb_ixr = []  # Canvas item ids for bomb body/fuse/spark.
@@ -26,26 +28,26 @@ sm = "main"  # Sequence mode controlling animation phase.
 
 class creation:  
     def __init__(self):
-        # Define HEX values for colour codes to add more colour options
+        # Define HEX values for colour codes to add more colour options.
         self.SKY = "#5C94FC"
         self.BRICK = "#C84C0C"  
         self.BRICK_DARK = "#8B2E0D"  
         self.GROUND = "#C84C0C"  
-        self.GROUND_DARK = "#8B2E0D"
+        self.GROUND_DARK = "#8B2E0D"  
         self.PIPE = "#1E9C2A"  
         self.PIPE_DARK = "#0F6B1C"  
         self.HILL = "#4AAE2A"  
         self.HILL_DARK = "#2E7D1A"  
-        self.CLOUD = "#FFFFFF"  
+        self.CLOUD = "#FFFFFF"
         self.CLOUD_SHADOW = "#CDE8FF"  
-        self.QUESTION = "#F7A000"  
-        self.QUESTION_DARK = "#B26B00"
+        self.QUESTION = "#F7A000"
+        self.QUESTION_DARK = "#B26B00"  
         self.MARIO_RED = "#E43B2C"  
-        self.MARIO_BROWN = "#8B4513"  
-        self.MARIO_SKIN = "#FFD2A6"
-        self.GOOMBA = "#B5652A"  
+        self.MARIO_BROWN = "#8B4513"
+        self.MARIO_SKIN = "#FFD2A6"  
+        self.GOOMBA = "#B5652A"
         self.GOOMBA_DARK = "#7A3B12"  
-        self.HUD = "#FFFFFF"
+        self.HUD = "#FFFFFF"  
         self.COIN = "#F7D000"  
 
         self.brick_y = height - 220  # Brick row Y anchored to screen size.
@@ -58,12 +60,12 @@ class creation:
         # Animation constants
         self.MARIO_W = 32  # Mario sprite width in pixels.
         self.MARIO_H = 28  # Mario sprite height in pixels.
-        self.GOOMBA_W = 30  # Goomba sprite width 
+        self.GOOMBA_W = 30  # Goomba sprite width.
         self.GOOMBA_TOP_OFFSET = -18  # Offset to goomba top.
-        self.GOOMBA_BOB_AMPLITUDE = 9  # Vertical bobbing amplitude.
-        self.GOOMBA_BOB_SPEED = 6.0  # Vertical bobbing angular speed.
+        self.GOOMBA_BOB_AMPLITUDE = 9  # Vertical amplitude.
+        self.GOOMBA_BOB_SPEED = 6.0  # Vertical angular speed.
         self.bf_td = 2.4  # Bomb fuse total duration.
-        # Values are dereived from trial and error. 
+        # Values are derived from trial and error.
 
         self.gty = height - 80  # Ground top Y value.
         self.gmy = self.gty - self.MARIO_H  # Mario Y when standing on ground.
@@ -72,6 +74,8 @@ class creation:
         self.item_specs = {}  # Store per-item draw data for delete-and-redraw moves.
 
     def __track_rect(self, x1, y1, x2, y2, fill, outline, width):
+        # Record rectangle geometry so it can be deleted and recreated on movement.
+        # Create the rectangle with or without a custom outline width.
         if width is None:
             item_id = s.create_rectangle(x1, y1, x2, y2, fill=fill, outline=outline)
         else:
@@ -90,6 +94,8 @@ class creation:
         return item_id
 
     def __track_oval(self, x1, y1, x2, y2, fill, outline, width):
+        # Record oval geometry so it can be deleted and recreated on movement.
+        # Create the oval with or without a custom outline width.
         if width is None:
             item_id = s.create_oval(x1, y1, x2, y2, fill=fill, outline=outline)
         else:
@@ -108,6 +114,8 @@ class creation:
         return item_id
 
     def __track_line(self, x1, y1, x2, y2, fill, width):
+        # Record line geometry so it can be deleted and recreated on movement.
+        # Create a line with the requested thickness.
         item_id = s.create_line(x1, y1, x2, y2, fill=fill, width=width)
         self.item_specs[item_id] = {
             "type": "line",
@@ -122,6 +130,7 @@ class creation:
         return item_id
 
     def __forget_items(self, ixr):
+        # Remove any tracked geometry for deleted items.
         for item_id in ixr:
             if item_id in self.item_specs:
                 del self.item_specs[item_id]
@@ -162,7 +171,7 @@ class creation:
                 s.create_rectangle(x, y, x + bw, y + bh, fill=self.GROUND, outline=self.GROUND_DARK, width=2)  # Draw brick.
                 s.create_line(x + bw / 2, y, x + bw / 2, y + bh, fill=self.GROUND_DARK, width=2)  # Draw vertical split.
 
-    def draw_brick(self, x, y, size=40):  # Draw mario-style brick block.
+    def draw_brick(self, x, y, size=40):  
         s.create_rectangle(x, y, x + size, y + size, fill=self.BRICK, outline=self.BRICK_DARK, width=2)  # Brick border.
         s.create_line(x, y + size / 2, x + size, y + size / 2, fill=self.BRICK_DARK, width=2)  # Horizontal split.
         s.create_line(x + size / 2, y, x + size / 2, y + size / 2, fill=self.BRICK_DARK, width=2)  # Upper-right split.
@@ -177,7 +186,7 @@ class creation:
         s.create_rectangle(x - 10, y - pipe_height, x + 70, y - pipe_height + 20, fill=self.PIPE, outline=self.PIPE_DARK, width=2)  # Pipe top.
         s.create_line(x + 30, y - pipe_height, x + 30, y, fill=self.PIPE_DARK, width=2)  # Pipe center split.
 
-    def draw_mario(self, x, y, scale=2):  # Draw pixel-art mario and return item ids.
+    def draw_mario(self, x, y, scale=2):  
         pixels = [  # Encoded mario sprite rows.
             "....RRRRRR....",
             "...RRRRRRRR...",
@@ -246,11 +255,13 @@ class creation:
 
     # Private class to ensure its not called from outside as it can cause conflicts (I caught a few crashes)
     def __move_items(self, ixr, x, y):  # Translate a list of canvas items.
+        # Delete and recreate each item so movement works without s.move (Previous versions weren't allowed).
         for index, item_id in enumerate(ixr):  # Iterate all item ids.
             spec = self.item_specs.get(item_id)
             if spec is None:
-                continue
+                continue  # Skip items that are no longer tracked.
 
+            # Compute the translated geometry for this item x.
             x1 = spec["x1"] + x
             y1 = spec["y1"] + y
             x2 = spec["x2"] + x
@@ -260,9 +271,11 @@ class creation:
             width = spec["width"]
             item_type = spec["type"]
 
+            # Remove old item before recreating it at the new location.
             s.delete(item_id)
             del self.item_specs[item_id]
 
+            # Recreate the item using the same shape type.
             if item_type == "rectangle":
                 new_id = self.__track_rect(x1, y1, x2, y2, fill, outline, width)
             elif item_type == "oval":
@@ -311,7 +324,8 @@ class creation:
 
 
     def __jump_to(self, tx, ty, duration, jump_height, on_complete=None):  
-        mario_state["jump"] = {  # Save jump parameters for update loop.
+        # Save jump parameters for update loop.
+        mario_state["jump"] = {
             "start_time": eld,
             "duration": duration,
             "sx": mario_state["x"],
@@ -329,7 +343,7 @@ class creation:
         mario_state["run"] = {"speed": -speed}  # Negative speed means left.
 
     def __exit_right(self):  # Switch sequence to rightward exit motion.
-        global sm  # Use global sequence mode.
+        global sm  # Use global sequence mode for global use.
         sm = "exiting"  # Enter exiting state. Again naming doesn't matter here as long as "exiting" is common
         self.__run_right(255.0)  # Apply rightward run speed. Value guessed and random
 
@@ -339,14 +353,15 @@ class creation:
 
     
     def __remove_speech(self):  # Remove current speech text if present.
-        global speech_id   
-        s.delete(speech_id)
-        speech_id
+        global speech_id
+        s.delete(speech_id)  # Delete the current speech bubble text.
+        speech_id  # Keep reference; Tk handles deleting the canvas item.
 
     
-    def __clear_speech(self):  
-        global speech_id  
-        speech_id = s.create_text(  
+    def __clear_speech(self):
+        global speech_id
+        # Position the speech bubble above mario's head.
+        speech_id = s.create_text(
             mario_state["x"] + 10,
             mario_state["y"] - 16,
             text="Yeehaw~ uh.. Mario!",
@@ -354,12 +369,13 @@ class creation:
             font=("Helvetica", 16, "bold"),
             anchor="s",
         )
+        # Schedule speech removal and the next jump in the sequence.
         r.after(1400, self.__remove_speech)  
         r.after(1400, self.__jump_to_ground)  
 
     def create_bomb(self):  
         global bomb_ixr, bft  #Bomb fuse time must be global
-        if bomb_ixr:  
+        if bomb_ixr:
             return  # Exit if bomb already exists.
 
         bx = mario_state["x"] - 10  # Bomb base x near mario hand.
@@ -368,28 +384,32 @@ class creation:
         fuse = self.__track_line(bx + 12, by + 1, bx + 20, by - 8, "#222222", 2)  # Fuse line.
         spark = self.__track_oval(bx + 19, by - 10, bx + 23, by - 6, "#FFD44D", "#FF8C00", None)  # Spark tip.
 
-        bomb_ixr = [body, fuse, spark]  
-        bft = 0.0  
+        bomb_ixr = [body, fuse, spark]  # Store bomb item ids.
+        bft = 0.0  # Reset fuse timer.
 
     def clear_bomb(self):
-        global bomb_ixr, bft  
-        for item_id in bomb_ixr:  
-            s.delete(item_id)  
+        global bomb_ixr, bft
+        # Delete any existing bomb items from the canvas.
+        for item_id in bomb_ixr:
+            s.delete(item_id)
         self.__forget_items(bomb_ixr)
-        bomb_ixr = []  
-        bft = 0.0  
+        bomb_ixr = []  # Clear stored bomb item ids.
+        bft = 0.0  # Reset fuse timer.
 
-    def animate_bomb_fuse(self, dt):  
-        global bft  
+    def animate_bomb_fuse(self, dt):
+        global bft
 
-        body, fuse, spark = bomb_ixr  
-        bft = min(self.bf_td, bft + dt)  
-        p = bft / self.bf_td  
+        # Recreate the fuse and spark each frame so their endpoints can move.
+
+        body, fuse, spark = bomb_ixr  # Unpack current bomb item ids.
+        bft = min(self.bf_td, bft + dt)  # Advance fuse timer with clamp.
+        p = bft / self.bf_td  # Normalize burn progress to 0-1.
 
         body_spec = self.item_specs.get(body)
         if body_spec is None:
-            return
+            return  # Skip update if the body was removed.
 
+        # Read bomb body bounds to anchor the fuse start.
         bx1 = body_spec["x1"]
         by1 = body_spec["y1"]
         bx2 = body_spec["x2"]
@@ -401,21 +421,24 @@ class creation:
         near_x = bx1 + 14  # Fuse tip x near end of burn.
         near_y = by1 - 3  # Fuse tip y near end of burn.
 
+        # Lerp the fuse tip from far to near as it burns down.
         end_x = far_x + (near_x - far_x) * p
-        end_y = far_y + (near_y - far_y) * p  
+        end_y = far_y + (near_y - far_y) * p
 
         fuse_color = "#F5A623" if p > 0.35 else "#3A2A1A"  # Brighten fuse after initial burn.
 
+        # Replace the fuse each frame to update its geometry.
         s.delete(fuse)
         if fuse in self.item_specs:
             del self.item_specs[fuse]
 
-        new_fuse = self.__track_line(start_x, start_y, end_x, end_y, fuse_color, 2)
-        bomb_ixr[1] = new_fuse
+        new_fuse = self.__track_line(start_x, start_y, end_x, end_y, fuse_color, 2)  # Draw updated fuse.
+        bomb_ixr[1] = new_fuse  # Store new fuse id.
 
+        # Compute spark pulse size using a fast sine wave.
         pulse = 2.1 + 0.9 * (0.5 + 0.5 * math.sin(eld * 38.0))
-        spark_fill = "#FFE36C"
-        spark_outline = "#FF7A00"
+        spark_fill = "#FFE36C"  # Default spark fill color.
+        spark_outline = "#FF7A00"  # Default spark outline color.
 
         if int(eld * 22) % 3 == 1:  # Spark color frame B.
             spark_fill = "#FFC94A"
@@ -424,10 +447,11 @@ class creation:
             spark_fill = "#FFF2B3"
             spark_outline = "#FF8C00"
 
-        s.delete(spark)
+        s.delete(spark)  # Remove old spark so the pulsing effect can be redrawn.
         if spark in self.item_specs:
             del self.item_specs[spark]
 
+        # Recreate spark at the new fuse tip, sized by the current pulse.
         new_spark = self.__track_oval(
             end_x - pulse,
             end_y - pulse,
@@ -437,20 +461,21 @@ class creation:
             spark_outline,
             None,
         )
-        bomb_ixr[2] = new_spark
+        bomb_ixr[2] = new_spark  # Store new spark id.
 
     def reenter_with_bomb(self):  # Bring mario back from right carrying bomb.
-        global sm  
-        sm = "returning_with_bomb"  
+        global sm
+        sm = "returning_with_bomb"  # Switch sequence to bomb return.
+        # Spawn mario just off-screen to the right.
         self.__set_mario_pos(width + 5, self.gmy)
-        self.create_bomb()  
-        self.__run_left(240.0)  
+        self.create_bomb()
+        self.__run_left(240.0)
 
-    def explode_map(self): # Explode the map at the end
-        global sm  
-        sm = "exploding"  
-        mario_state["run"] = None  
-        self.clear_bomb()  
+    def explode_map(self):  # Explode the map at the end.
+        global sm
+        sm = "exploding"
+        mario_state["run"] = None  # Stop mario movement during explosion.
+        self.clear_bomb()
 
         x = mario_state["x"] + 10  # Explosion center x near mario.
         y = self.gmy - 10  # Explosion center y near ground.
@@ -475,50 +500,54 @@ class creation:
             s.delete(blast2)
             s.delete(blast3)
 
+        # Cleanup and final message display.
         r.after(120, delete_flash)
         r.after(240, delete_blasts)
         r.after(260, wipe_scene)  # Replace scene with final text.
 
-    def jump_to_box(self):  
-        target_x = self.brick_x + 4  
-        target_y = self.brick_y - self.MARIO_H
-        self.__jump_to(target_x, target_y, duration=1.0, jump_height=95.0, on_complete=self.jump_to_goomba1)  
+    def jump_to_box(self):
+        # Aim slightly right of the question block center for landing.
+        target_x = self.brick_x + 4
+        target_y = self.brick_y - self.MARIO_H  # Align mario feet to brick top.
+        self.__jump_to(target_x, target_y, duration=1.0, jump_height=95.0, on_complete=self.jump_to_goomba1)
 
-    def jump_to_goomba1(self):  
-        g1 = goombas[0]  
+    def jump_to_goomba1(self):
+        g1 = goombas[0]  # Choose the first goomba state.
         landing_t = eld + 0.95  # Predict time at landing.
         target_x = g1["x"] + self.GOOMBA_W / 2 - self.MARIO_W / 2  # Center mario over goomba.
         target_y = self.__goomba_top_at(landing_t, g1) - self.MARIO_H + 1  # Land on goomba head.
-        self.__jump_to(target_x, target_y, duration=0.95, jump_height=110.0, on_complete=self.stomp_goomba1)  
+        self.__jump_to(target_x, target_y, duration=0.95, jump_height=110.0, on_complete=self.stomp_goomba1)
 
-    def stomp_goomba1(self):  # Stomp first goomba then chain next jump.
-        self.__kill_goomba(goombas[0])  # Squash first goomba.
-        self.jump_to_goomba2()  # Immediately jump toward second goomba.
+    def stomp_goomba1(self):  
+        self.__kill_goomba(goombas[0])  
+        self.jump_to_goomba2()  
 
-    def jump_to_goomba2(self):  # Jump from first stomp to second goomba.
-        g2 = goombas[1]  # Select second goomba state.
-        landing_t = eld + 0.95  # Predict time at landing.
-        target_x = g2["x"] + self.GOOMBA_W / 2 - self.MARIO_W / 2  # Center mario over second goomba.
-        target_y = self.__goomba_top_at(landing_t, g2) - self.MARIO_H + 1  # Land on second goomba head.
+    def jump_to_goomba2(self):  
+        g2 = goombas[1]  
+        landing_t = eld + 0.95
+        target_x = g2["x"] + self.GOOMBA_W / 2 - self.MARIO_W / 2  
+        target_y = self.__goomba_top_at(landing_t, g2) - self.MARIO_H + 1  
         self.__jump_to(target_x, target_y, duration=0.95, jump_height=92.0, on_complete=self.stomp_goomba2)  
 
-    def stomp_goomba2(self):  # Stomp second goomba then show speech.
-        self.__kill_goomba(goombas[1])  # Squash second goomba.
-        self.__clear_speech()  # Show speech line and continue sequence.
+    def stomp_goomba2(self):  
+        self.__kill_goomba(goombas[1])  
+        self.__clear_speech()
 
-    def draw_animation(self, mario_ixr, goomba1_ixr, goomba2_ixr):  # Initialize everything
-        global mario_state, goombas, eld, lt, speech_id, bomb_ixr, bft, sm  
+    def draw_animation(self, mario_ixr, goomba1_ixr, goomba2_ixr):  # Initialize everything.
+        global mario_state, goombas, eld, lt, speech_id, bomb_ixr, bft, sm
 
         self.mario_ixr = mario_ixr  # Store mario sprite ids for movement updates.
 
-        mario_state = {  # Reset mario animation state.
+        # Reset mario animation state.
+        mario_state = {
             "x": float(self.mario_x),
             "y": float(self.mario_y),
             "jump": None,
             "run": None,
         }
 
-        goombas = [  # Reset goomba runtime state.
+        # Reset goomba runtime state.
+        goombas = [
             {
                 "x": 560.0,
                 "base_y": float(height - 95),
@@ -544,62 +573,65 @@ class creation:
         bft = 0.0  # Reset bomb fuse timer.
         sm = "main"  # Set initial sequence mode.
 
-        r.after(500, self.jump_to_box)  
-        r.after(16, self.update_scene)  
+        r.after(500, self.jump_to_box)  # Delay the first jump to settle scene.
+        r.after(16, self.update_scene)  # Start the update loop.
 
-    def update_scene(self):  
-        global eld, lt  
+    def update_scene(self):
+        global eld, lt
 
-        now = time.perf_counter()  
-        dt = min(0.05, now - lt)  
-        lt = now  
-        eld += dt  
+        now = time.perf_counter()  # Read current frame time.
+        dt = min(0.05, now - lt)  # Clamp dt to avoid big jumps on slow frames.
+        lt = now  # Store timestamp for next frame.
+        eld += dt  # Accumulate elapsed time.
 
         # Goombas continuously bob while alive
-        for goomba in goombas:  
-            if goomba["alive"]:  
+        for goomba in goombas:
+            if goomba["alive"]:
+                # Move goomba sprite by the delta between new and old bob offsets.
                 new_offset = self.__goomba_offset_at(eld, goomba)
                 y = new_offset - goomba["offset"]
-                goomba["offset"] = new_offset  
-                self.__move_items(goomba["ids"], 0, y)  
+                goomba["offset"] = new_offset
+                self.__move_items(goomba["ids"], 0, y)
 
         if bomb_ixr:  # Animate bomb only when bomb exists.
-            self.animate_bomb_fuse(dt)  
+            self.animate_bomb_fuse(dt)
 
-        jump = mario_state["jump"]  
+        jump = mario_state["jump"]  # Read current jump state.
         if jump is not None:  # Handle parabolic jump motion.
+            # Convert elapsed time into normalized jump progress.
             t = (eld - jump["start_time"]) / jump["duration"]
-            if t > 1.0:  
-                t = 1.0  
+            if t > 1.0:
+                t = 1.0
 
+            # Lerp horizontal/vertical base position across the jump.
             base_x = jump["sx"] + (jump["tx"] - jump["sx"]) * t
-            base_y = jump["sy"] + (jump["ty"] - jump["sy"]) * t  
-            arc = jump["height"] * 4.0 * t * (1.0 - t)  
-            self.__set_mario_pos(base_x, base_y - arc)  
+            base_y = jump["sy"] + (jump["ty"] - jump["sy"]) * t
+            arc = jump["height"] * 4.0 * t * (1.0 - t)  # Simple parabola for jump arc.
+            self.__set_mario_pos(base_x, base_y - arc)
 
             if t >= 1.0:
-                mario_state["jump"] = None  
-                if jump["on_complete"] is not None:  
-                    jump["on_complete"]()  
-        elif mario_state["run"] is not None:  # Handle if Mario state is not "run" which shouldn't happen
-            speed = mario_state["run"]["speed"]  
-            self.__set_mario_pos(mario_state["x"] + speed * dt, mario_state["y"])  
+                mario_state["jump"] = None
+                if jump["on_complete"] is not None:
+                    jump["on_complete"]()
+        elif mario_state["run"] is not None:  # Move mario in a straight line when running.
+            speed = mario_state["run"]["speed"]  # Read current run speed.
+            self.__set_mario_pos(mario_state["x"] + speed * dt, mario_state["y"])
 
-            if bomb_ixr:  
-                self.__move_items(bomb_ixr, speed * dt, 0)  
+            if bomb_ixr:
+                self.__move_items(bomb_ixr, speed * dt, 0)
 
-            if sm == "exiting" and mario_state["x"] > width + 36:  
+            if sm == "exiting" and mario_state["x"] > width + 36:
                 mario_state["run"] = None  # Stop running at off-screen point.
-                r.after(420, self.reenter_with_bomb)  
-            elif sm == "returning_with_bomb" and mario_state["x"] < width * 0.62:  
+                r.after(420, self.reenter_with_bomb)
+            elif sm == "returning_with_bomb" and mario_state["x"] < width * 0.62:
                 self.explode_map()  # Trigger explosion sequence.
-                return  
+                return
 
-        r.after(16, self.update_scene)  # Wait before starting next thing
+        r.after(16, self.update_scene)  # Wait before starting next thing.
 
 
-class_call = creation()  
-mario_ixr, goomba1_ixr, goomba2_ixr = class_call.draw_screen()  # Draw static scene and get ids.
-class_call.draw_animation(mario_ixr, goomba1_ixr, goomba2_ixr)  # Initialize animation state and loops.
+class_call = creation()
+mario_ixr, goomba1_ixr, goomba2_ixr = class_call.draw_screen()  
+class_call.draw_animation(mario_ixr, goomba1_ixr, goomba2_ixr)
 
 r.mainloop()  
