@@ -7,11 +7,11 @@ HEIGHT = 600
 f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="black")
 f.pack()
 
-word = "cow"
+word = "trees"
 wl: list = list(word) # Word List
 gl:list = [] # Guess List
 
-
+picked:dict = {}
 
 g_max = 6
 g_usr = 0
@@ -20,40 +20,88 @@ box_s = 50
 ini_x = 10
 ini_y = 10
 
+def end_game():
+    t_box.delete(0, tk.END)
+    t_box.insert(0, f"The word was: {word}")
+    t_box.config(state='disabled')
+
+def game_won():
+    t_box.delete(0, tk.END)
+    t_box.insert(0, "You guessed the word!!")
+    t_box.config(state='disabled')
 
 def update(ini_y):
     global box_s
     global ini_x
-
+    global picked
     global gl
-    for e in range(0,len(gl)):
-        print(f"Guess: {gl[e]}, word: {wl[e]}")
-        if gl[e] == wl[e]:
-            f.create_rectangle(ini_x, ini_y, ini_x+box_s, ini_y+box_s, outline="black", fill="green")
-        elif gl[e] in wl:
-            f.create_rectangle(ini_x, ini_y, ini_x+box_s, ini_y+box_s, outline="black", fill="orange")
-        else:
-            f.create_rectangle(ini_x, ini_y, ini_x+box_s, ini_y+box_s, outline="black", fill="grey")
-        f.create_text(ini_x + (box_s/2), ini_y + (box_s/2), text=gl[e].upper(), fill="white", font="Helvetica")
-        ini_x += box_s+5
+    global wl
 
-def end_game():
-    t_box.insert(0, f"The word was: {word}")
-    t_box.config(state='disabled')
+    count = 0
+
+    picked.clear()   
+    ini_x = 10       
+
+    for e in range(0, len(gl)):
+        color = ""
+
+
+        if gl[e] == wl[e]:
+            color = "green"
+            picked[gl[e]] = 1
+            count += 1
+
+        elif gl[e] in wl:
+
+            compare = wl.copy()
+
+
+            for i in range(len(gl)):
+                if gl[i] == wl[i] and gl[i] == gl[e]:
+                    if gl[e] in compare:
+                        compare.remove(gl[e])
+
+            if gl[e] in compare:
+                color = "orange"
+            else:
+                color = "grey"
+
+        else:
+            color = "grey"
+
+        f.create_rectangle(
+            ini_x, ini_y,
+            ini_x + box_s, ini_y + box_s,
+            outline="black",
+            fill=color
+        )
+
+        f.create_text(
+            ini_x + (box_s / 2),
+            ini_y + (box_s / 2),
+            text=gl[e].upper(),
+            fill="white",
+            font="Helvetica"
+        )
+
+        ini_x += box_s + 5
+
+        if count == len(word):
+            game_won()
+            return
 
 def submit(event=None):
     global g_usr
     global ini_x
     global gl
     g = t_box.get()
-    gl = list(g)
-    yval = plist.get(g_usr)
-    update(yval)
     if len(g) != len(word):
         t_box.delete(0, tk.END)
         return 
+    gl = list(g)
+    yval = plist.get(g_usr)
+    update(yval)
     if g_usr == g_max-1:
-        t_box.delete(0, tk.END)
         end_game()
         return
     ini_x = 10
