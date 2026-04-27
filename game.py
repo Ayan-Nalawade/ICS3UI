@@ -39,7 +39,7 @@ class Gameboard:
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
         f.create_text(135, 50, text="Click on the colored peg \nto place into the row", fill="white")
     
-    def on_ball_click(self, event):
+    def __on_ball_click(self, event): # Private function to avoid accidental calls
         item = f.find_withtag("current") # Current just finds the tag name for whatever element the cursor was on DURING the click.
 
         if item: # If it doesn't exist, maybe the user used a machine to move the cusor faster than the command ran, then we want to do nothing 
@@ -60,8 +60,21 @@ class Gameboard:
                           outline="#4a4a4a",
                           width=2,
                           tags=("ball",self.colors[i])) # Assign tag ball and the color. Ball isn't required here since its a easy animation but added it as practice
-        f.create_oval(x+5, y+5, x+12, y+12, fill="white", outline="", tags=("ball", self.colors[i]))
-        f.tag_bind("ball", "<Button-1>", self.on_ball_click)
+        f.create_oval(x+5, y+5, x+12, y+12, fill="white", outline="", tags=("ball", self.colors[i])) # Add 3D 
+        f.tag_bind("ball", "<Button-1>", self.__on_ball_click)
+    
+    def __check(self):
+        pass
+
+    def __delete(self):
+        pass
+    
+    def draw_buttons(self):
+        check_btn = tk.Button(r, text="Check", font=("Arial", 12), command=self.__check)
+        f.create_window(80,160, window=check_btn)
+
+        delete_btn = tk.Button(r, text="Delete", font=("Arial", 12), command=self.__delete)
+        f.create_window(180, 160, window=delete_btn)
     
     
 
@@ -71,5 +84,6 @@ class Gameboard:
 game = Gameboard()
 game.draw_instructions()
 game.draw_balls()
+game.draw_buttons()
 
 f.mainloop()
