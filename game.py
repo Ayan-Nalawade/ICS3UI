@@ -33,10 +33,27 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 class Gameboard:
     def __init__(self):
         self.gamestate = []
+        self.colors = ["b", "g", "o", "p", "r", "g"]
     
     def draw_instructions(self):
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
-        f.create_text(130, 40, text="Click on the colored peg", fill="white")
+        f.create_text(130, 40, text="Click on the colored peg \nTo place into the row", fill="white")
+    
+    def draw_balls(self):
+        start_x = 35 # x coordinate
+        y = 100 # y coordinate
+        dimeter = 25 # Diameter of the ball
+        spce = 35 # Space between each balls
+
+        for i in range(0,len(self.colors)):
+            x = start_x + (i*spce)
+            f.create_oval(x, y, x+dimeter, y+dimeter,
+                          fill=self.colors[i],
+                          outlint="#4a4a4a",
+                          width=2,
+                          tags=("ball",self.colors[i])) # Assign tag ball and the color. Ball isn't required here since its a easy animation but added it as practice
+        
+
 
 
 game = Gameboard()
