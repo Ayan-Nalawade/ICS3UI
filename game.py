@@ -39,8 +39,30 @@ class Gameboard:
     def draw_instructions(self):
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
         f.create_text(135, 50, text="Click on the colored ball \nto place into the row", fill="white")
+
+    def __on_ball_click(self, event): # Private function to avoid accidental calls
+        item = f.find_withtag("current") # Current just finds the tag name for whatever element the cursor was on DURING the click.
+
+        if item: # If it doesn't exist, maybe the user used a machine to move the cusor faster than the command ran, then we want to do nothing 
+            tag = f.gettags(item[0])
+            if self.gamestate["column"] == 4:
+                return 
+            self.gamestate["col"] = tag[1]
+            self.__update()
+            self.gamestate["column"] += 1
+            print(tag)
+            print(f"I clicked {tag[1]} ball!!!")
+
+    def __check(self):
+        pass
+
+    def __delete(self):
+        pass
+
+    def __new_game(self):
+        pass
     
-    def update(self):
+    def __update(self):
         # Update Triangle and reset other triangles to grey
         for i in range(0,10):
             if self.gamestate.get("level") == i:
@@ -129,14 +151,6 @@ class Gameboard:
             center_y = sol_panel_y + 17.5
             f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2)
     
-    def __on_ball_click(self, event): # Private function to avoid accidental calls
-        item = f.find_withtag("current") # Current just finds the tag name for whatever element the cursor was on DURING the click.
-
-        if item: # If it doesn't exist, maybe the user used a machine to move the cusor faster than the command ran, then we want to do nothing 
-            tag = f.gettags(item[0])
-            print(tag)
-            print(f"I clicked {tag[1]} ball!!!")
-    
     def draw_balls(self):
         start_x = 50 # x coordinate
         y = 100 # y coordinate
@@ -152,15 +166,6 @@ class Gameboard:
                           tags=("ball",self.colors[i])) # Assign tag ball and the color. Ball isn't required here since its a easy animation but added it as practice
         f.create_oval(x+5, y+5, x+12, y+12, fill="white", outline="", tags=("ball", self.colors[i])) # Add 3D 
         f.tag_bind("ball", "<Button-1>", self.__on_ball_click)
-    
-    def __check(self):
-        pass
-
-    def __delete(self):
-        pass
-
-    def __new_game(self):
-        pass
     
     def draw_buttons(self):
         check_btn = tk.Button(r, text="Check", font=("Arial", 12), command=self.__check)
@@ -183,6 +188,5 @@ game.draw_instructions()
 game.draw_balls()
 game.draw_buttons()
 game.draw_gameboard()
-game.update()
 
 f.mainloop()
