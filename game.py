@@ -54,7 +54,10 @@ class Gameboard:
             print(f"I clicked {tag[1]} ball!!!")
 
     def __check(self):
-        pass
+        if self.gamestate.get("column") != 4:
+            print("Incomplete")
+            return
+        print("finally a worthy check")
 
     def __delete(self):
         pass
