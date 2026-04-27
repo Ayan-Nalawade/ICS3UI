@@ -27,12 +27,19 @@ r = tk.Tk()
 WIDTH = 600
 HEIGHT = 600
 r.geometry(f"{WIDTH}x{HEIGHT}")
-f = tk.Canvas(r, background="orange")
+f = tk.Canvas(r, background="#8b8378")
 f.pack(fill="both", expand=True) # Only after the user picks we want to create the screen
+
+class Gameboard:
+    def __init__(self):
+        self.gamestate = []
     
+    def draw_instructions(self):
+        f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
+        f.create_text(130, 40, text="Click on the colored peg", fill="white")
 
 
-f.create_rectangle(10,10,60,60,fill="#3D360F")
-
+game = Gameboard()
+game.draw_instructions()
 
 f.mainloop()
