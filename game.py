@@ -33,7 +33,7 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.gamestate = {"level":0, "column":0, "col":"white", "guess":"0000"} # For guess 0=null, 1=black, 2=yellow
+        self.gamestate = {"level":0, "column":0, "col":"white", "usrguess":"0000"} # For usrguess 0=null, 1=black, 2=yellow
         self.colors = ["blue", "green", "red", "purple", "orange"]
     
     def draw_instructions(self):
@@ -55,7 +55,6 @@ class Gameboard:
 
     def __check(self):
         if self.gamestate.get("column") != 4:
-            print("Incomplete")
             return
         print("finally a worthy check")
 
@@ -76,8 +75,8 @@ class Gameboard:
         # Update the ball colour
         f.itemconfig(f"bh{self.gamestate.get("column")}", fill=self.gamestate.get("col"))
 
-        # Update the guess
-        for x, g in enumerate(self.gamestate.get("guess")):
+        # Update the usrguess
+        for x, g in enumerate(self.gamestate.get("usrguess")):
             if g == "0":
                 f.itemconfig(f"h{x}", fill="white")
             elif g == "1":
@@ -101,7 +100,7 @@ class Gameboard:
         wood_color = "#A66B38"
         hole_color = "#FFFEFE"
 
-        # Draw the 10 guess rows
+        # Draw the 10 usrguess rows
         for row in range(10):
             y = start_y + (row * row_height)
             center_y = y + (row_height / 2)
@@ -110,15 +109,15 @@ class Gameboard:
             f.create_polygon(285, center_y - 12, 285, center_y + 12, 310, center_y, 
                                 fill="#555555", outline="black", width=2, tags=f"p{row}")
 
-            # Draw the Brown Wooden Background for Guess 
+            # Draw the Brown Wooden Background for usrguess 
             f.create_rectangle(320, y, 480, y + row_height, fill=wood_color, outline="black")
             
-            # Vertical separator lines for the guess slots
+            # Vertical separator lines for the usrguess slots
             for col in range(1, 4):
                 line_x = 320 + (col * 40)
                 f.create_line(line_x, y, line_x, y + row_height, fill="black")
 
-            # Draw the 4 Guess ball Holes
+            # Draw the 4 usrguess ball Holes
             for col in range(4):
                 hole_x = 340 + (col * 40)
                 # Outer shadow/highlight ring and inner black hole
