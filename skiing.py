@@ -5,8 +5,10 @@ from time import sleep
 from math import sqrt, sin, cos
 
 r = tk.Tk()
-WIDTH = r.winfo_screenwidth() # x
-HEIGHT = r.winfo_screenheight() # y
+# WIDTH = r.winfo_screenwidth() # x
+# HEIGHT = r.winfo_screenheight() # y
+WIDTH = 600
+HEIGHT=600
 r.geometry(f'{WIDTH}x{HEIGHT}')
 f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="#87CEEB")
 f.pack()
@@ -138,7 +140,7 @@ class Skier:
             self.reset_vars() # If skier going off
 
 skiers:list = []        
-for _ in range(0,15): 
+for _ in range(0,100): 
     skiers.append(Skier(f))
         
 def animate():
