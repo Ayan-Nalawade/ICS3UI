@@ -33,7 +33,7 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.gamestate = {"level":0, "colorder":"", "guess":0000}
+        self.gamestate = {"level":0, "column":0, "col":"white", "guess":"0000"} # For guess 0=null, 1=black, 2=yellow
         self.colors = ["blue", "green", "red", "purple", "orange"]
     
     def draw_instructions(self):
@@ -48,7 +48,17 @@ class Gameboard:
             else:
                 f.itemconfig(f"p{self.gamestate.get("level")}", fill="#555555")
 
+        # Update the ball colour
+        f.itemconfig(f"bh{self.gamestate.get("column")}", fill=self.gamestate.get("col"))
 
+        # Update the guess
+        for x, g in enumerate(self.gamestate.get("guess")):
+            if g == "0":
+                f.itemconfig(f"h{x}", fill="white")
+            elif g == "1":
+                f.itemconfig(f"h{x}", fill="black")
+            else:
+                f.itemconfig(f"h{x}", fill="yellow")
 
     
     def draw_gameboard(self):
@@ -93,10 +103,10 @@ class Gameboard:
             f.create_rectangle(490, y, 550, y + row_height, fill=wood_color, outline="black")
 
             # Draw the 4 little Feedback Holes (2x2 grid)
-            f.create_oval(505 - 4, center_y - 10 - 4, 505 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h1") # Top-left
-            f.create_oval(535 - 4, center_y - 10 - 4, 535 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h2") # Top-right
-            f.create_oval(505 - 4, center_y + 10 - 4, 505 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h3") # Bottom-left
-            f.create_oval(535 - 4, center_y + 10 - 4, 535 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h4") # Bottom-right
+            f.create_oval(505 - 4, center_y - 10 - 4, 505 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h0") # Top-left
+            f.create_oval(535 - 4, center_y - 10 - 4, 535 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h1") # Top-right
+            f.create_oval(505 - 4, center_y + 10 - 4, 505 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h2") # Bottom-left
+            f.create_oval(535 - 4, center_y + 10 - 4, 535 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h3") # Bottom-right
 
         # Draw the Solution Area at the bottom
         solution_y = start_y + (10 * row_height)
