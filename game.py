@@ -40,6 +40,17 @@ class Gameboard:
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
         f.create_text(135, 50, text="Click on the colored ball \nto place into the row", fill="white")
     
+    def update(self):
+        # Update Triangle and reset other triangles to grey
+        for i in range(0,10):
+            if self.gamestate.get("level") == i:
+                f.itemconfig(f"p{self.gamestate.get("level")}", fill="blue")
+            else:
+                f.itemconfig(f"p{self.gamestate.get("level")}", fill="#555555")
+
+
+
+    
     def draw_gameboard(self):
         # Background panel for the gameboard
         board_x1, board_y1 = WIDTH - 330, 20
@@ -62,7 +73,7 @@ class Gameboard:
 
             # Draw the Triangle Pointer (Left side)
             f.create_polygon(285, center_y - 12, 285, center_y + 12, 310, center_y, 
-                                fill="#555555", outline="black", width=2, tags=("p", row))
+                                fill="#555555", outline="black", width=2, tags=f"p{row}")
 
             # Draw the Brown Wooden Background for Guess 
             f.create_rectangle(320, y, 480, y + row_height, fill=wood_color, outline="black")
@@ -76,7 +87,7 @@ class Gameboard:
             for col in range(4):
                 hole_x = 340 + (col * 40)
                 # Outer shadow/highlight ring and inner black hole
-                f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=("bh", col))
+                f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=(f"bh{col}"))
 
             # Draw the Brown Background
             f.create_rectangle(490, y, 550, y + row_height, fill=wood_color, outline="black")
@@ -162,5 +173,6 @@ game.draw_instructions()
 game.draw_balls()
 game.draw_buttons()
 game.draw_gameboard()
+game.update()
 
 f.mainloop()
