@@ -24,6 +24,7 @@ while True:
 print(f"Debug: {pick}")
 # Pick a random word based on the user decision to play easy or hard mode
 r = tk.Tk()
+r.title("Mastermind")
 WIDTH = 600
 HEIGHT = 600
 r.geometry(f"{WIDTH}x{HEIGHT}")
@@ -32,12 +33,80 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.gamestate = []
+        self.gamestate = {"level":0, "colorder":"", "guess":0000}
         self.colors = ["blue", "green", "red", "purple", "orange"]
     
     def draw_instructions(self):
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
-        f.create_text(135, 50, text="Click on the colored peg \nto place into the row", fill="white")
+        f.create_text(135, 50, text="Click on the colored ball \nto place into the row", fill="white")
+    
+    def draw_gameboard(self):
+        # Background panel for the gameboard
+        board_x1, board_y1 = WIDTH - 330, 20
+        board_x2, board_y2 = WIDTH - 20, HEIGHT - 20
+        f.create_rectangle(board_x1, board_y1, board_x2, board_y2, fill="#3B3737", outline="black", width=2)
+
+        # Title Text
+        f.create_text(425, 45, text="MasterMind", fill="white", font=("Arial", 24, "bold"))
+
+        # Dimensions for the grid
+        start_y = 70
+        row_height = 43
+        wood_color = "#A66B38"
+        hole_color = "#FFFEFE"
+
+        # Draw the 10 guess rows
+        for row in range(10):
+            y = start_y + (row * row_height)
+            center_y = y + (row_height / 2)
+
+            # Draw the Triangle Pointer (Left side)
+            f.create_polygon(285, center_y - 12, 285, center_y + 12, 310, center_y, 
+                                fill="#555555", outline="black", width=2, tags=("p", row))
+
+            # Draw the Brown Wooden Background for Guess 
+            f.create_rectangle(320, y, 480, y + row_height, fill=wood_color, outline="black")
+            
+            # Vertical separator lines for the guess slots
+            for col in range(1, 4):
+                line_x = 320 + (col * 40)
+                f.create_line(line_x, y, line_x, y + row_height, fill="black")
+
+            # Draw the 4 Guess ball Holes
+            for col in range(4):
+                hole_x = 340 + (col * 40)
+                # Outer shadow/highlight ring and inner black hole
+                f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=("bh", col))
+
+            # Draw the Brown Background
+            f.create_rectangle(490, y, 550, y + row_height, fill=wood_color, outline="black")
+
+            # Draw the 4 little Feedback Holes (2x2 grid)
+            f.create_oval(505 - 4, center_y - 10 - 4, 505 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h1") # Top-left
+            f.create_oval(535 - 4, center_y - 10 - 4, 535 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h2") # Top-right
+            f.create_oval(505 - 4, center_y + 10 - 4, 505 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h3") # Bottom-left
+            f.create_oval(535 - 4, center_y + 10 - 4, 535 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h4") # Bottom-right
+
+        # Draw the Solution Area at the bottom
+        solution_y = start_y + (10 * row_height)
+        
+        # "Solution" Text
+        f.create_text(425, solution_y + 15, text="Solution", fill="white", font=("Arial", 16, "bold"))
+        
+        # Solution wooden panel
+        sol_panel_y = solution_y + 30
+        f.create_rectangle(320, sol_panel_y, 480, sol_panel_y + 35, fill=wood_color, outline="black")
+        
+        # Solution vertical lines
+        for col in range(1, 4):
+            line_x = 320 + (col * 40)
+            f.create_line(line_x, sol_panel_y, line_x, sol_panel_y + 35, fill="black")
+
+        # Solution holes
+        for col in range(4):
+            hole_x = 340 + (col * 40)
+            center_y = sol_panel_y + 17.5
+            f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2)
     
     def __on_ball_click(self, event): # Private function to avoid accidental calls
         item = f.find_withtag("current") # Current just finds the tag name for whatever element the cursor was on DURING the click.
@@ -92,5 +161,6 @@ game = Gameboard()
 game.draw_instructions()
 game.draw_balls()
 game.draw_buttons()
+game.draw_gameboard()
 
 f.mainloop()
