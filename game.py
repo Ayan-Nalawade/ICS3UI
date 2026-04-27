@@ -68,6 +68,9 @@ class Gameboard:
 
     def __delete(self):
         pass
+
+    def __new_game(self):
+        pass
     
     def draw_buttons(self):
         check_btn = tk.Button(r, text="Check", font=("Arial", 12), command=self.__check)
@@ -75,6 +78,10 @@ class Gameboard:
 
         delete_btn = tk.Button(r, text="Delete", font=("Arial", 12), command=self.__delete)
         f.create_window(180, 160, window=delete_btn)
+
+        new_game_btn = tk.Button(r, text="New Game", font=("Arial", 12), command=self.__new_game)
+        f.create_window(125, 210, window=new_game_btn)
+
     
     
 
