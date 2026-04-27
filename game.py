@@ -60,7 +60,10 @@ class Gameboard:
                           outline="#4a4a4a",
                           width=2,
                           tags=("ball",self.colors[i])) # Assign tag ball and the color. Ball isn't required here since its a easy animation but added it as practice
+        f.create_oval(x+5, y+5, x+12, y+12, fill="white", outline="", tags=("ball", self.colors[i]))
         f.tag_bind("ball", "<Button-1>", self.on_ball_click)
+    
+    
 
 
 
