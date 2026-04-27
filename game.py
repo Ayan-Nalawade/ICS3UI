@@ -66,9 +66,9 @@ class Gameboard:
         # Update Triangle and reset other triangles to grey
         for i in range(0,10):
             if self.gamestate.get("level") == i:
-                f.itemconfig(f"p{self.gamestate.get("level")}", fill="blue")
+                f.itemconfig(f"p{i}", fill="blue")
             else:
-                f.itemconfig(f"p{self.gamestate.get("level")}", fill="#555555")
+                f.itemconfig(f"p{i}", fill="#555555")
 
         # Update the ball colour
         f.itemconfig(f"bh{self.gamestate.get("column")}", fill=self.gamestate.get("col"))
@@ -150,6 +150,7 @@ class Gameboard:
             hole_x = 340 + (col * 40)
             center_y = sol_panel_y + 17.5
             f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2)
+        self.__update()
     
     def draw_balls(self):
         start_x = 50 # x coordinate
