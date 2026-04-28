@@ -58,6 +58,36 @@ class Gameboard:
     def __check(self):
         if self.gamestate.get("column") != 4:
             return
+            
+        chars = {}
+        usrguess = list(self.gamestate.get("guess"))
+        for each in usrguess:
+            if each in chars:
+                chars[each] += 1
+            else:
+                chars[each] = 1
+                
+        print(f"DEBUG: {chars}")
+        for b, e in enumerate(pick):
+            if e in chars and chars.get(e) != 0:
+                chars[e] -= 1
+                if e == usrguess[b]:
+                    self.gamestate["guesseval"] += "1"
+                else:
+                    self.gamestate["guesseval"] += "2"
+            else:
+                self.gamestate["guesseval"] += "0"
+
+        eval_list = list(self.gamestate["guesseval"]) 
+        shuffle(eval_list)                            
+        self.gamestate["guesseval"] = "".join(eval_list)
+        
+        self.__update() 
+        
+
+        self.gamestate["level"] += 1
+        
+
         if self.gamestate.get("level") == self.level_max:
             for c, e in enumerate(pick):
                 if e == "r":
@@ -74,34 +104,8 @@ class Gameboard:
                     f.itemconfig(f"s{c}", fill="blue")
                 else:
                     f.itemconfig(f"s{c}", fill="black")
-            self.__update()
-            return
+            return 
 
-            print("Your lost!")
-        chars = {}
-        usrguess = list(self.gamestate.get("guess")) # Example rogb with real answer bgrr
-        for each in usrguess:
-            if each in chars:
-                chars[each] += 1
-            else:
-                chars[each] = 1
-        print(f"DEBUG: {chars}")
-        for b, e in enumerate(pick):
-            if e in chars and chars.get(e) != 0:
-                chars[e] -= 1
-                if e == usrguess[b]:
-                    self.gamestate["guesseval"] +=  "1"
-                else:
-                    self.gamestate["guesseval"] += "2"
-            else:
-                self.gamestate["guesseval"] += "0"
-
-        eval_list = list(self.gamestate["guesseval"]) # Convert "1200" to ['1', '2', '0', '0']
-        shuffle(eval_list)                            # Mix them up randomly
-        self.gamestate["guesseval"] = "".join(eval_list) # Put it back together into a string
-        self.__update() # Update with new stuff
-        # Reset board stats
-        self.gamestate["level"] += 1
         self.gamestate["column"] = 0
         self.gamestate["guess"] = ""
         self.gamestate["guesseval"] = ""
@@ -206,16 +210,16 @@ class Gameboard:
         
         # Solution wooden panel
         sol_panel_y = solution_y + 30
-        f.create_rectangle(320, sol_panel_y, 480, sol_panel_y + 35, fill=wood_color, outline="black")
+        f.create_rectangle(340, sol_panel_y, 500, sol_panel_y + 35, fill=wood_color, outline="black")
         
         # Solution vertical lines
         for col in range(1, 4):
-            line_x = 320 + (col * 40)
+            line_x = 340 + (col * 40)
             f.create_line(line_x, sol_panel_y, line_x, sol_panel_y + 35, fill="black")
 
         # Solution holes
         for col in range(4):
-            hole_x = 340 + (col * 40)
+            hole_x = 360 + (col * 40)
             center_y = sol_panel_y + 17.5
             f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=f"s{col}")
         self.__update()
