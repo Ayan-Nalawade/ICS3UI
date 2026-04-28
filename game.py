@@ -121,7 +121,7 @@ class Gameboard:
             if self.gamestate["column"] == 4:
                 return 
             self.gamestate["col"] = tag[1]
-            self.gamestate["guess"] = f"{self.gamestate["guess"]}{tag[1][0]}" # Append first character of the letter
+            self.gamestate["guess"] = f"{self.gamestate['guess']}{tag[1][0]}" # Append first character of the letter
             self.__update()
             self.gamestate["column"] += 1
 
