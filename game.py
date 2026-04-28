@@ -1,7 +1,7 @@
 import tkinter as tk
 from random import randint as rand
 
-pick:str = ""
+pick = ""
 
 while True:
     fi = input("Easy or Hard mode?: ")
@@ -22,6 +22,7 @@ while True:
         continue
     
 print(f"Debug: {pick}")
+pick = list(pick)
 # Pick a random word based on the user decision to play easy or hard mode
 r = tk.Tk()
 r.title("Mastermind")
@@ -33,8 +34,9 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.gamestate = {"level":0, "column":0, "col":"white", "usrguess":"0000"} # For usrguess 0=null, 1=black, 2=yellow
-        self.colors = ["blue", "green", "red", "purple", "orange"]
+        self.level_max = 10
+        self.gamestate = {"level":0, "column":0, "col":"white", "guess":"", "guesseval":""} # For guesseval 0=null, 1=black, 2=yellow
+        self.colors = ["blue", "green", "red", "purple", "orange", "yellow"]
     
     def draw_instructions(self):
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
@@ -48,6 +50,7 @@ class Gameboard:
             if self.gamestate["column"] == 4:
                 return 
             self.gamestate["col"] = tag[1]
+            self.gamestate["guess"] = f"{self.gamestate["guess"]}{tag[1][0]}" # Append first character of the letter
             self.__update()
             self.gamestate["column"] += 1
             print(tag)
@@ -56,7 +59,36 @@ class Gameboard:
     def __check(self):
         if self.gamestate.get("column") != 4:
             return
-        print("finally a worthy check")
+        if self.gamestate.get("level") == self.level_max:
+            r.destroy() # Delete the screen
+            print("Your lost!")
+        chars = {}
+        usrguess = list(self.gamestate.get("guess")) # Example rogb with real answer bgrr
+        for each in usrguess:
+            if each in chars:
+                chars[each] += 1
+            else:
+                chars[each] = 1
+        print(chars)
+        for b, e in enumerate(pick):
+            if e in chars and chars.get(e) != 0:
+                chars[e] -= 1
+                if e == usrguess[b]:
+                    self.gamestate["guesseval"] +=  "1"
+                else:
+                    self.gamestate["guesseval"] += "2"
+            else:
+                self.gamestate["guesseval"] += "0"
+        self.__update() # Update with new stuff
+        # Reset board stats
+        self.gamestate["level"] += 1
+        self.gamestate["coloumn"] = 0
+        self.gamestate["guess"] = ""
+        self.gamestate["guesseval"] = ""
+        self.gamestate["col"] = "white"
+                
+
+
 
     def __delete(self):
         pass
@@ -73,16 +105,18 @@ class Gameboard:
                 f.itemconfig(f"p{i}", fill="#555555")
 
         # Update the ball colour
-        f.itemconfig(f"bh{self.gamestate.get("column")}", fill=self.gamestate.get("col"))
+        current_level = self.gamestate.get("level")
+        current_col = self.gamestate.get("column")
+        f.itemconfig(f"bh_{current_level}_{current_col}", fill=self.gamestate.get("col"))
 
-        # Update the usrguess
-        for x, g in enumerate(self.gamestate.get("usrguess")):
+        # Update the guesseval
+        for x, g in enumerate(self.gamestate.get("guesseval")):
             if g == "0":
-                f.itemconfig(f"h{x}", fill="white")
+                f.itemconfig(f"h_{current_level}_{x}", fill="white")
             elif g == "1":
-                f.itemconfig(f"h{x}", fill="black")
+                f.itemconfig(f"h_{current_level}_{x}", fill="black")
             else:
-                f.itemconfig(f"h{x}", fill="yellow")
+                f.itemconfig(f"h_{current_level}_{x}", fill="yellow")
 
     
     def draw_gameboard(self):
@@ -100,7 +134,7 @@ class Gameboard:
         wood_color = "#A66B38"
         hole_color = "#FFFEFE"
 
-        # Draw the 10 usrguess rows
+        # Draw the 10 guesseval rows
         for row in range(10):
             y = start_y + (row * row_height)
             center_y = y + (row_height / 2)
@@ -109,28 +143,28 @@ class Gameboard:
             f.create_polygon(285, center_y - 12, 285, center_y + 12, 310, center_y, 
                                 fill="#555555", outline="black", width=2, tags=f"p{row}")
 
-            # Draw the Brown Wooden Background for usrguess 
+            # Draw the Brown Wooden Background for guesseval 
             f.create_rectangle(320, y, 480, y + row_height, fill=wood_color, outline="black")
             
-            # Vertical separator lines for the usrguess slots
+            # Vertical separator lines for the guesseval slots
             for col in range(1, 4):
                 line_x = 320 + (col * 40)
                 f.create_line(line_x, y, line_x, y + row_height, fill="black")
 
-            # Draw the 4 usrguess ball Holes
+            # Draw the 4 guesseval ball Holes
             for col in range(4):
                 hole_x = 340 + (col * 40)
                 # Outer shadow/highlight ring and inner black hole
-                f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=(f"bh{col}"))
+                f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=(f"bh_{row}_{col}"))
 
             # Draw the Brown Background
             f.create_rectangle(490, y, 550, y + row_height, fill=wood_color, outline="black")
 
             # Draw the 4 little Feedback Holes (2x2 grid)
-            f.create_oval(505 - 4, center_y - 10 - 4, 505 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h0") # Top-left
-            f.create_oval(535 - 4, center_y - 10 - 4, 535 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags="h1") # Top-right
-            f.create_oval(505 - 4, center_y + 10 - 4, 505 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h2") # Bottom-left
-            f.create_oval(535 - 4, center_y + 10 - 4, 535 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags="h3") # Bottom-right
+            f.create_oval(505 - 4, center_y - 10 - 4, 505 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags=f"h_{row}_0") # Top-left
+            f.create_oval(535 - 4, center_y - 10 - 4, 535 + 4, center_y - 10 + 4, fill=hole_color, outline="black", width=1, tags=f"h_{row}_1") # Top-right
+            f.create_oval(505 - 4, center_y + 10 - 4, 505 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags=f"h_{row}_2") # Bottom-left
+            f.create_oval(535 - 4, center_y + 10 - 4, 535 + 4, center_y + 10 + 4, fill=hole_color, outline="black", width=1, tags=f"h_{row}_3") # Bottom-right
 
         # Draw the Solution Area at the bottom
         solution_y = start_y + (10 * row_height)
@@ -155,7 +189,7 @@ class Gameboard:
         self.__update()
     
     def draw_balls(self):
-        start_x = 50 # x coordinate
+        start_x = 35 # x coordinate
         y = 100 # y coordinate
         dimeter = 25 # Diameter of the ball
         spce = 35 # Space between each balls
