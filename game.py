@@ -35,7 +35,9 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.level_max = 5
+        self.game_over = False
+        self.confetti_array = []
+        self.level_max = 3
         self.gamestate = {"level":0, "column":0, "col":"white", "guess":"", "guesseval":""} # For guesseval 0=null, 1=black, 2=yellow
         self.colors = ["blue", "green", "red", "purple", "orange", "yellow"]
     
@@ -44,6 +46,8 @@ class Gameboard:
         f.create_text(135, 50, text="Click on the colored ball \nto place into the row", fill="white")
 
     def __on_ball_click(self, event): # Private function to avoid accidental calls
+        if self.game_over:
+            return
         item = f.find_withtag("current") # Current just finds the tag name for whatever element the cursor was on DURING the click.
 
         if item: # If it doesn't exist, maybe the user used a machine to move the cusor faster than the command ran, then we want to do nothing 
@@ -84,6 +88,10 @@ class Gameboard:
         
         self.__update() 
         
+        if self.gamestate["guesseval"] == "1111":
+            self.game_over = True
+            self.trigger_win()
+            return
 
         self.gamestate["level"] += 1
         
@@ -110,12 +118,53 @@ class Gameboard:
         self.gamestate["guess"] = ""
         self.gamestate["guesseval"] = ""
         self.gamestate["col"] = "white"
+    
+
+    def trigger_win(self):
+        # Reveal solution first
+        for c, e in enumerate(pick):
+            if e == "r": f.itemconfig(f"s{c}", fill="red")
+            elif e == "o": f.itemconfig(f"s{c}", fill="orange")
+            elif e == "y": f.itemconfig(f"s{c}", fill="yellow")
+            elif e == "g": f.itemconfig(f"s{c}", fill="green")
+            elif e == "p": f.itemconfig(f"s{c}", fill="purple")
+            elif e == "b": f.itemconfig(f"s{c}", fill="blue")
+            else: f.itemconfig(f"s{c}", fill="black")
+
+        f.create_text(WIDTH//2, HEIGHT//2, text="YOU WIN!", fill="gold", font=("Arial", 48, "bold"), tags="win_text")
+        
+        self.confetti_array = []
+        confetti_colors = ["red", "blue", "green", "yellow", "purple", "orange", "white", "pink"]
+        
+        for _ in range(100):
+            x = rand(50, WIDTH-50)
+            y = rand(-200, 0) 
+            speed_y = rand(3, 8) 
+            color = confetti_colors[rand(0, len(confetti_colors)-1)]
+            
+            particle_id = f.create_oval(x, y, x+8, y+8, fill=color, outline="")
+            self.confetti_array.append({"id": particle_id, "speed": speed_y})
+            
+        self.animate_confetti()
+
+    def animate_confetti(self):
+        if not self.game_over: 
+            f.delete("win_text")
+            for p in self.confetti_array:
+                f.delete(p["id"])
+            return
+
+        for particle in self.confetti_array:
+            f.move(particle["id"], 0, particle["speed"])
+            
+            coords = f.coords(particle["id"])
+            if coords and coords[1] > HEIGHT:
+                f.move(particle["id"], 0, -HEIGHT - 50)
                 
-
-
+        r.after(30, self.animate_confetti)
 
     def __delete(self):
-        if self.gamestate["column"] == 0:
+        if self.gamestate["column"] == 0 or self.game_over:
             return
         self.gamestate["column"] -= 1
         self.gamestate["col"] = "white"
@@ -123,10 +172,14 @@ class Gameboard:
         self.__update()
 
     def __new_game(self):
+        self.game_over = False
         for i in range(0,self.level_max):
             for x in range(0,4):
                 self.gamestate = {"level":i, "column":x, "col":"white", "guess":"", "guesseval":"0000"}
                 self.__update()
+
+        for col in range(4):
+            f.itemconfig(f"s{col}", fill="#FFFEFE")
         self.gamestate["level"] = 0
         self.gamestate["column"] = 0
         self.gamestate["guesseval"] = ""
