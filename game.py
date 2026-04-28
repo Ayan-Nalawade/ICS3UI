@@ -24,6 +24,8 @@ while True:
         continue
     
 print(f"Debug: {pick}")
+
+print("Terminal not required! Click on the coloured balls")
 pick = list(pick)
 # Pick a random word based on the user decision to play easy or hard mode
 r = tk.Tk()
