@@ -35,7 +35,7 @@ f.pack(fill="both", expand=True) # Only after the user picks we want to create t
 
 class Gameboard:
     def __init__(self):
-        self.level_max = 10
+        self.level_max = 5
         self.gamestate = {"level":0, "column":0, "col":"white", "guess":"", "guesseval":""} # For guesseval 0=null, 1=black, 2=yellow
         self.colors = ["blue", "green", "red", "purple", "orange", "yellow"]
     
@@ -59,7 +59,24 @@ class Gameboard:
         if self.gamestate.get("column") != 4:
             return
         if self.gamestate.get("level") == self.level_max:
-            r.destroy() # Delete the screen
+            for c, e in enumerate(pick):
+                if e == "r":
+                    f.itemconfig(f"s{c}", fill="red")
+                elif e == "o":
+                    f.itemconfig(f"s{c}", fill="orange")
+                elif e == "y":
+                    f.itemconfig(f"s{c}", fill="yellow")
+                elif e == "g":
+                    f.itemconfig(f"s{c}", fill="green")
+                elif e == "p":
+                    f.itemconfig(f"s{c}", fill="purple")
+                elif e == "b":
+                    f.itemconfig(f"s{c}", fill="blue")
+                else:
+                    f.itemconfig(f"s{c}", fill="black")
+            self.__update()
+            return
+
             print("Your lost!")
         chars = {}
         usrguess = list(self.gamestate.get("guess")) # Example rogb with real answer bgrr
@@ -150,8 +167,7 @@ class Gameboard:
         wood_color = "#A66B38"
         hole_color = "#FFFEFE"
 
-        # Draw the 10 guesseval rows
-        for row in range(10):
+        for row in range(self.level_max):
             y = start_y + (row * row_height)
             center_y = y + (row_height / 2)
 
@@ -201,7 +217,7 @@ class Gameboard:
         for col in range(4):
             hole_x = 340 + (col * 40)
             center_y = sol_panel_y + 17.5
-            f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2)
+            f.create_oval(hole_x - 10, center_y - 10, hole_x + 10, center_y + 10, fill=hole_color, outline="#777777", width=2, tags=f"s{col}")
         self.__update()
     
     def draw_balls(self):
