@@ -1,6 +1,7 @@
 import tkinter as tk
 from random import randint as rand
 from random import shuffle
+from time import sleep
 
 pick = ""
 
@@ -37,13 +38,78 @@ class Gameboard:
     def __init__(self):
         self.game_over = False
         self.confetti_array = []
-        self.level_max = 3
+        self.revealed_clues = []
+        self.level_max = 10
         self.gamestate = {"level":0, "column":0, "col":"white", "guess":"", "guesseval":""} # For guesseval 0=null, 1=black, 2=yellow
         self.colors = ["blue", "green", "red", "purple", "orange", "yellow"]
     
     def draw_instructions(self):
         f.create_rectangle(20, 20, WIDTH-350, HEIGHT-20, fill="#3B3737")
         f.create_text(135, 50, text="Click on the colored ball \nto place into the row", fill="white")
+    
+    def trigger_explosion(self):
+        self.game_over = True
+        
+        f.create_text(WIDTH//2, HEIGHT//2, text="BOOM!", fill="red", font=("Arial", 80, "bold"))
+        
+        self.explosion_items = []
+        all_items = f.find_all()
+        
+        for item in all_items:
+
+            vx = rand(-25, 25)
+            vy = rand(-35, -10) 
+            self.explosion_items.append({"id": item, "vx": vx, "vy": vy})
+            
+        self.animate_explosion()
+
+    def animate_explosion(self):
+        for p in self.explosion_items:
+
+            f.move(p["id"], p["vx"], p["vy"])
+
+            p["vy"] += 2 
+            
+
+        r.after(30, self.animate_explosion)
+    
+    def __buy_clue(self):
+        if self.game_over:
+            return
+            
+
+        if self.gamestate["level"] + 2 >= self.level_max:
+            print("Not enough rows left to buy a clue!")
+            return
+            
+
+        unrevealed = [i for i in range(4) if i not in self.revealed_clues]
+        if not unrevealed: # All clues already revealed
+            return
+            
+
+        clue_index = unrevealed[rand(0, len(unrevealed)-1)]
+        self.revealed_clues.append(clue_index)
+        
+
+        e = pick[clue_index]
+        color_map = {"r": "red", "o": "orange", "y": "yellow", "g": "green", "p": "purple", "b": "blue"}
+        f.itemconfig(f"s{clue_index}", fill=color_map.get(e, "black"))
+        
+
+        self.gamestate["level"] += 2
+        
+
+        self.gamestate["column"] = 0
+        self.gamestate["guess"] = ""
+        self.gamestate["col"] = "white"
+        
+        self.__update()
+
+        if len(self.revealed_clues) == 4:
+            self.trigger_explosion()
+            f.create_text(WIDTH//2, HEIGHT//2, text="Too many clues used! You LOST!", fill="gold", font=("Arial", 12, "bold"), tags="win_text")
+            
 
     def __on_ball_click(self, event): # Private function to avoid accidental calls
         if self.game_over:
@@ -173,6 +239,10 @@ class Gameboard:
 
     def __new_game(self):
         self.game_over = False
+        self.revealed_clues = []
+
+        f.delete("loss_text") 
+        f.delete("win_text") 
         for i in range(0,self.level_max):
             for x in range(0,4):
                 self.gamestate = {"level":i, "column":x, "col":"white", "guess":"", "guesseval":"0000"}
@@ -302,6 +372,9 @@ class Gameboard:
 
         new_game_btn = tk.Button(r, text="New Game", font=("Arial", 12), command=self.__new_game)
         f.create_window(125, 210, window=new_game_btn)
+
+        clue_btn = tk.Button(r, text="Buy Clue (-2 rows)", font=("Arial", 12), command=self.__buy_clue)
+        f.create_window(125, 260, window=clue_btn)
 
 game = Gameboard()
 game.draw_instructions()
