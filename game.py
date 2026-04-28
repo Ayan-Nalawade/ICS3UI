@@ -1,5 +1,6 @@
 import tkinter as tk
 from random import randint as rand
+from random import shuffle
 
 pick = ""
 
@@ -8,13 +9,13 @@ while True:
     if fi.lower() == "easy":
         with open("Easy combinations.txt", "r") as x:
             data = x.readlines()
-            pick = data[rand(0,len(data)-1)]
+            pick = data[rand(0,len(data)-1)].strip()
             
         break
     elif fi.lower() == "hard":
         with open("Hard combinations.txt", "r") as x:
             data = x.readlines()
-            pick = data[rand(0,len(data)-1)]
+            pick = data[rand(0,len(data)-1)].strip()
             
         break
     else:
@@ -53,8 +54,6 @@ class Gameboard:
             self.gamestate["guess"] = f"{self.gamestate["guess"]}{tag[1][0]}" # Append first character of the letter
             self.__update()
             self.gamestate["column"] += 1
-            print(tag)
-            print(f"I clicked {tag[1]} ball!!!")
 
     def __check(self):
         if self.gamestate.get("column") != 4:
@@ -69,7 +68,7 @@ class Gameboard:
                 chars[each] += 1
             else:
                 chars[each] = 1
-        print(chars)
+        print(f"DEBUG: {chars}")
         for b, e in enumerate(pick):
             if e in chars and chars.get(e) != 0:
                 chars[e] -= 1
@@ -79,10 +78,14 @@ class Gameboard:
                     self.gamestate["guesseval"] += "2"
             else:
                 self.gamestate["guesseval"] += "0"
+
+        eval_list = list(self.gamestate["guesseval"]) # Convert "1200" to ['1', '2', '0', '0']
+        shuffle(eval_list)                            # Mix them up randomly
+        self.gamestate["guesseval"] = "".join(eval_list) # Put it back together into a string
         self.__update() # Update with new stuff
         # Reset board stats
         self.gamestate["level"] += 1
-        self.gamestate["coloumn"] = 0
+        self.gamestate["column"] = 0
         self.gamestate["guess"] = ""
         self.gamestate["guesseval"] = ""
         self.gamestate["col"] = "white"
