@@ -91,10 +91,23 @@ class Gameboard:
 
 
     def __delete(self):
-        pass
+        if self.gamestate["column"] == 0:
+            return
+        self.gamestate["column"] -= 1
+        self.gamestate["col"] = "white"
+        self.gamestate["guess"] = self.gamestate["guess"][:-1] # Get rid of the most recent guess
+        self.__update()
 
     def __new_game(self):
-        pass
+        for i in range(0,self.level_max):
+            for x in range(0,4):
+                self.gamestate = {"level":i, "column":x, "col":"white", "guess":"", "guesseval":"0000"}
+                self.__update()
+        self.gamestate["level"] = 0
+        self.gamestate["column"] = 0
+        self.gamestate["guesseval"] = ""
+        self.__update()
+
     
     def __update(self):
         # Update Triangle and reset other triangles to grey
@@ -213,12 +226,6 @@ class Gameboard:
 
         new_game_btn = tk.Button(r, text="New Game", font=("Arial", 12), command=self.__new_game)
         f.create_window(125, 210, window=new_game_btn)
-
-    
-    
-
-
-
 
 game = Gameboard()
 game.draw_instructions()
