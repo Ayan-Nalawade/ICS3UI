@@ -4,26 +4,30 @@ from random import shuffle
 from time import sleep
 
 pick = ""
+fi = input("Easy or Hard mode?: ")
 
-while True:
-    fi = input("Easy or Hard mode?: ")
-    if fi.lower() == "easy":
-        with open("Easy combinations.txt", "r") as x:
-            data = x.readlines()
-            pick = data[rand(0,len(data)-1)].strip()
-            
-        break
-    elif fi.lower() == "hard":
-        with open("Hard combinations.txt", "r") as x:
-            data = x.readlines()
-            pick = data[rand(0,len(data)-1)].strip()
-            
-        break
-    else:
-        print("Enter Easy or Hard!")
-        continue
+def pick_word(fi):
+    global pick
+    while True:
     
-print(f"Debug: {pick}")
+        if fi.lower() == "easy":
+            with open("Easy combinations.txt", "r") as x:
+                data = x.readlines()
+                pick = data[rand(0,len(data)-1)].strip()
+                
+            break
+        elif fi.lower() == "hard":
+            with open("Hard combinations.txt", "r") as x:
+                data = x.readlines()
+                pick = data[rand(0,len(data)-1)].strip()
+                
+            break
+        else:
+            print("Enter Easy or Hard!")
+            continue
+    
+    print(f"Debug: {pick}")
+pick_word(fi)
 
 print("Terminal not required! Click on the coloured balls")
 pick = list(pick)
@@ -153,16 +157,14 @@ class Gameboard:
         eval_list = list(self.gamestate["guesseval"]) 
         shuffle(eval_list)                            
         self.gamestate["guesseval"] = "".join(eval_list)
-        
         self.__update() 
         
         if self.gamestate["guesseval"] == "1111":
             self.game_over = True
             self.trigger_win()
             return
-
-        self.gamestate["level"] += 1
         
+        self.gamestate["level"] += 1
 
         if self.gamestate.get("level") == self.level_max:
             for c, e in enumerate(pick):
@@ -186,6 +188,7 @@ class Gameboard:
         self.gamestate["guess"] = ""
         self.gamestate["guesseval"] = ""
         self.gamestate["col"] = "white"
+        self.__update()
     
 
     def trigger_win(self):
@@ -255,7 +258,9 @@ class Gameboard:
         self.gamestate["level"] = 0
         self.gamestate["column"] = 0
         self.gamestate["guesseval"] = ""
+        pick_word(fi)
         self.__update()
+        
 
     
     def __update(self):
