@@ -87,9 +87,12 @@ class Gameboard:
         if self.gamestate["level"] + 2 >= self.level_max:
             print("Not enough rows left to buy a clue!")
             return
-            
+        
+        unrevealed = []
+        for i in range(4):# Maybe make this more readable
+            if i not in self.revealed_clues:
+                unrevealed.append(i)
 
-        unrevealed = [i for i in range(4) if i not in self.revealed_clues]
         if not unrevealed: # All clues already revealed
             return
             
@@ -131,28 +134,32 @@ class Gameboard:
             self.__update()
             self.gamestate["column"] += 1
 
-    def __check(self):
+    def __check(self): # b b r g where ans = b b g g
         if self.gamestate.get("column") != 4:
             return
             
         chars = {}
         usrguess = list(self.gamestate.get("guess"))
-        for each in usrguess:
-            if each in chars:
-                chars[each] += 1
-            else:
-                chars[each] = 1
+        target = list(pick)
+        
+        blacks = 0
+        yellows = 0
+        
+        for i in range(4):
+            if usrguess[i] == target[i]:
+                blacks += 1
+                usrguess[i] = None
+                target[i] = None
                 
-        print(f"DEBUG: {chars}")
-        for b, e in enumerate(pick):
-            if e in chars and chars.get(e) != 0:
-                chars[e] -= 1
-                if e == usrguess[b]:
-                    self.gamestate["guesseval"] += "1"
-                else:
-                    self.gamestate["guesseval"] += "2"
-            else:
-                self.gamestate["guesseval"] += "0"
+        for i in range(4):
+            if usrguess[i] is not None and usrguess[i] in target:
+                yellows += 1
+                target[target.index(usrguess[i])] = None
+        
+        evaluate = ("1" * blacks) + ("2" * yellows)
+        
+        self.gamestate["guesseval"] = evaluate + ("0" * (4- len(evaluate))) # Whatever remaining is white
+        
 
         eval_list = list(self.gamestate["guesseval"]) 
         shuffle(eval_list)                            
