@@ -28,6 +28,19 @@ class Board:
         self.sqh = HEIGHT//8 # Get the square height required for each square of the board
         self.sqw = WIDTH//8 # Get the square width required for each square of the board
         self.board_data = {} # "board location":(x,y,piece_info) is the format data is stored in
+        self.piece_size = max(1, int(min(self.sqw, self.sqh) * 0.98))
+        self._img_refs = {}
+
+        self.state = [
+            ['br','bn','bb','bq','bk','bb','bn','br'],
+            ['bp']*8,
+            [None]*8,
+            [None]*8,
+            [None]*8,
+            [None]*8,
+            ['wp']*8,
+            ['wr','wn','wb','wq','wk','wb','wn','wr']
+        ]
     
 
     def __progression(self, character) -> str:
@@ -64,6 +77,30 @@ class Board:
                 self.board_data[current] = (centrex, centrey, "None")
                 # Centre will be used to actually move the pieces
                 current = self.__progression(current)
+        # print(self.board_data)
+    
+    def draw_pieces(self):
+        f.delete("piece")
+        files = {'r','n','b','q','k','p'}
+
+        # Load images if not already loaded
+        if not self._img_refs:
+            for color in ('b', 'w'):
+                for key in files:
+                    img = Image.open(f"{color}{key}.png").convert("RGBA")
+                    img = img.resize((self.piece_size, self.piece_size), Image.LANCZOS)
+                    self._img_refs[color+key] = ImageTk.PhotoImage(img) # _img_refs is very important. It tells tkinter the images aren't garbage. Had to debug for a very long time
+
+        # Draw each piece from state
+        start = "A1"
+        for row in range(0,8):
+            for col in range(0,8):
+                piece = self.state[row][col]
+                x, y, _ = self.board_data.get(start)
+                img = self._img_refs.get(piece)
+                self.board_data[start] = (x, y, piece)
+                f.create_image(x, y, image=img, tags="piece")
+                start = self.__progression(start)
         print(self.board_data)
 
 
@@ -71,4 +108,5 @@ class Board:
 
 c = Board()
 c.draw_board()
+c.draw_pieces()
 f.mainloop()
