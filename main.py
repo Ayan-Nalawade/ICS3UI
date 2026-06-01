@@ -28,4 +28,13 @@ class Board:
         self.sqh = HEIGHT//8 # Get the square height required for each square of the board
         self.sqw = WIDTH//8 # Get the square width required for each square of the board
 
+    def draw_board(self):
+        for i in range(0,8): # Each row
+            for x in range(0,8): # Each coloumn
+                f.create_rectangle(x * self.sqw, i * self.sqh, (x+1) * self.sqw, (i+1) * self.sqh)
+
+
+c = Board()
+c.draw_board()
+
 f.mainloop()
