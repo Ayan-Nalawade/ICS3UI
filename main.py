@@ -46,22 +46,22 @@ class Board:
     def __progression(self, character) -> str:
         one, two = list(character)
         one = ord(one) # Convert to ASCII
-        if one == 72: # If H
-            if two == 8 or f"A{int(two)+1}" == "A9": # Check if the second value is a 8 AND make sure its not A9. A9 is possible since the +1 for two is done AFTER the check
+        if one == 72:
+            if two == 1: # So H1
                 return "None"
-            
-            return f"A{int(two)+1}"
+            return f"A{int(two)-1}"
         return f"{chr(one+1)}{two}"
+
         
     def progression_test(self):
-        start = "A1"
+        start = "A8"
         for i in range(64):
             x = self.__progression(start)
             start = x
-            print(x)
+            print(start)
 
     def draw_board(self):
-        current = "A1"
+        current = "A8"
         for i in range(0,8): # Each row
             for x in range(0,8): # Each coloumn
                 if (i + x) % 2 == 0:
@@ -92,14 +92,14 @@ class Board:
                     self._img_refs[color+key] = ImageTk.PhotoImage(img) # _img_refs is very important. It tells tkinter the images aren't garbage. Had to debug for a very long time
 
         # Draw each piece from state
-        start = "A1"
+        start = "A8"
         for row in range(0,8):
             for col in range(0,8):
                 piece = self.state[row][col]
                 x, y, _ = self.board_data.get(start)
                 img = self._img_refs.get(piece)
                 self.board_data[start] = (x, y, piece)
-                f.create_image(x, y, image=img, tags="piece")
+                f.create_image(x, y, image=img, tags=f"piece")
                 start = self.__progression(start)
         print(self.board_data)
 
@@ -107,6 +107,7 @@ class Board:
 
 
 c = Board()
+# c.progression_test()
 c.draw_board()
 c.draw_pieces()
 f.mainloop()
