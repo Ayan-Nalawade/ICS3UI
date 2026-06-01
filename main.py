@@ -44,10 +44,12 @@ class Board:
     
 
     def __progression(self, character) -> str:
-        one, two = list(character)
-        one = ord(one) # Convert to ASCII
+        if character == "None":  # Guard
+            return "None"
+        one, two = character[0], character[1]
+        one = ord(one)
         if one == 72:
-            if two == 1: # So H1
+            if two == '1': 
                 return "None"
             return f"A{int(two)-1}"
         return f"{chr(one+1)}{two}"
@@ -65,7 +67,7 @@ class Board:
         for i in range(0,8): # Each row
             for x in range(0,8): # Each coloumn
                 if (i + x) % 2 == 0:
-                    colour = "#FFFFFF"
+                    colour = "#949494"
                 else:
                     colour = "#925300"
                 
@@ -79,29 +81,49 @@ class Board:
                 current = self.__progression(current)
         # print(self.board_data)
     
+    def update_piece(self, tomove, target):
+        f.delete("piece")
+        x,y,piece=self.board_data.get(tomove)
+        x2,y2,_ = self.board_data.get(target) # Piece is left blank here because it just means that piece got taken
+        self.board_data[tomove] = (x,y,None)
+        self.board_data[target] = (x2,y2,piece)
+        start = "A8"
+        for i in range(64):
+            nx, ny, npiece = self.board_data.get(start)
+
+            if npiece is not None:
+                img = self._img_refs.get(npiece)
+                f.create_image(nx, ny, image=img, tags="piece")
+
+            start = self.__progression(start)
+
+            if start == "None":
+                break
+    
     def draw_pieces(self):
         f.delete("piece")
         files = {'r','n','b','q','k','p'}
 
-        # Load images if not already loaded
         if not self._img_refs:
             for color in ('b', 'w'):
                 for key in files:
                     img = Image.open(f"{color}{key}.png").convert("RGBA")
                     img = img.resize((self.piece_size, self.piece_size), Image.LANCZOS)
-                    self._img_refs[color+key] = ImageTk.PhotoImage(img) # _img_refs is very important. It tells tkinter the images aren't garbage. Had to debug for a very long time
+                    self._img_refs[color+key] = ImageTk.PhotoImage(img)
 
-        # Draw each piece from state
         start = "A8"
         for row in range(0,8):
             for col in range(0,8):
                 piece = self.state[row][col]
                 x, y, _ = self.board_data.get(start)
-                img = self._img_refs.get(piece)
                 self.board_data[start] = (x, y, piece)
-                f.create_image(x, y, image=img, tags=f"piece")
+                if piece:  # Only draw if there's actually a piece
+                    img = self._img_refs.get(piece)
+                    if img:
+                        f.create_image(x, y, image=img, tags="piece")
                 start = self.__progression(start)
-        print(self.board_data)
+    def on_click(self, event):
+        self.update_piece("A8", "A1")
 
 
 
@@ -110,4 +132,5 @@ c = Board()
 # c.progression_test()
 c.draw_board()
 c.draw_pieces()
+f.bind("<Button-1>", c.on_click)
 f.mainloop()
