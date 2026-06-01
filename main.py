@@ -27,6 +27,7 @@ class Board:
     def __init__(self):
         self.sqh = HEIGHT//8 # Get the square height required for each square of the board
         self.sqw = WIDTH//8 # Get the square width required for each square of the board
+        self.board_data = {} # "board location":(x,y,piece_info) is the format data is stored in
     
 
     def __progression(self, character) -> str:
@@ -47,12 +48,16 @@ class Board:
             print(x)
 
     def draw_board(self):
+        current = "A1"
         for i in range(0,8): # Each row
             for x in range(0,8): # Each coloumn
                 f.create_rectangle(x * self.sqw, i * self.sqh, (x+1) * self.sqw, (i+1) * self.sqh)
                 centrex = x * self.sqw + self.sqw // 2  # center x of square
                 centrey = i * self.sqh + self.sqh // 2  # center y of square
+                self.board_data[current] = (centrex, centrey, "None")
                 # Centre will be used to actually move the pieces
+                current = self.__progression(current)
+        print(self.board_data)
 
 
 
