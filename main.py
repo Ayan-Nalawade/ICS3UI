@@ -51,7 +51,14 @@ class Board:
         current = "A1"
         for i in range(0,8): # Each row
             for x in range(0,8): # Each coloumn
-                f.create_rectangle(x * self.sqw, i * self.sqh, (x+1) * self.sqw, (i+1) * self.sqh)
+                if (i + x) % 2 == 0:
+                    colour = "#FFFFFF"
+                else:
+                    colour = "#925300"
+                
+                f.create_rectangle(x * self.sqw, i * self.sqh, (x+1) * self.sqw, (i+1) * self.sqh, fill=colour, tags="square")
+            
+
                 centrex = x * self.sqw + self.sqw // 2  # center x of square
                 centrey = i * self.sqh + self.sqh // 2  # center y of square
                 self.board_data[current] = (centrex, centrey, "None")
@@ -64,5 +71,4 @@ class Board:
 
 c = Board()
 c.draw_board()
-c.progression_test()
 f.mainloop()
