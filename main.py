@@ -151,12 +151,13 @@ class Board:
     
 
     def on_click(self, event):
+        self.highlight_square(self._get_square(event))
         if self.tomove == "":
             self.tomove = self._get_square(event)
         else:
             self.update_piece(self.tomove, self._get_square(event))
             self.tomove = ""
-        self.highlight_square(self._get_square(event))
+
 
 
 
