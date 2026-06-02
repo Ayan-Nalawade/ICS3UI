@@ -41,6 +41,7 @@ class Board:
             ['wp']*8,
             ['wr','wn','wb','wq','wk','wb','wn','wr']
         ]
+        self.tomove = ""
     
 
     def __progression(self, character) -> str:
@@ -122,8 +123,23 @@ class Board:
                     if img:
                         f.create_image(x, y, image=img, tags="piece")
                 start = self.__progression(start)
+
+    def _get_square(self, event): # This function now maps the square to the coordinates
+        col = event.x // self.sqw
+        row = event.y // self.sqh
+
+        file = chr(ord('A') + col)
+        rank = 8 - row
+
+        return f"{file}{rank}"
+    
+
     def on_click(self, event):
-        self.update_piece("A8", "A1")
+        if self.tomove == "":
+            self.tomove = self._get_square(event)
+        else:
+            self.update_piece(self.tomove, self._get_square(event))
+            self.tomove = ""
 
 
 
