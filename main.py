@@ -56,7 +56,7 @@ class Board:
         return f"{chr(one+1)}{two}"
 
         
-    def progression_test(self):
+    def progression_test(self): # Test if the Blocks are correctly replying with the correct progression
         start = "A8"
         for i in range(64):
             x = self.__progression(start)
@@ -83,6 +83,7 @@ class Board:
         # print(self.board_data)
     
     def update_piece(self, tomove, target):
+        f.delete("highlight")
         f.delete("piece")
         x,y,piece=self.board_data.get(tomove)
         x2,y2,_ = self.board_data.get(target) # Piece is left blank here because it just means that piece got taken
@@ -133,6 +134,21 @@ class Board:
 
         return f"{file}{rank}"
     
+    def highlight_square(self, square):
+        f.delete("highlight")
+
+        x, y, _ = self.board_data[square]
+
+        f.create_rectangle(
+            x - self.sqw//2,
+            y - self.sqh//2,
+            x + self.sqw//2,
+            y + self.sqh//2,
+            outline="blue",
+            width=4,
+            tags="highlight"
+        )
+    
 
     def on_click(self, event):
         if self.tomove == "":
@@ -140,6 +156,7 @@ class Board:
         else:
             self.update_piece(self.tomove, self._get_square(event))
             self.tomove = ""
+        self.highlight_square(self._get_square(event))
 
 
 
