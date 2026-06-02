@@ -81,26 +81,47 @@ class Board:
                 # Centre will be used to actually move the pieces
                 current = self.__progression(current)
         # print(self.board_data)
+
+    def redraw_pieces(self):
+        f.delete("piece")
+
+        for square, (x, y, piece) in self.board_data.items():
+            if piece is not None:
+                img = self._img_refs[piece]
+                f.create_image(x, y, image=img, tags="piece")
     
     def update_piece(self, tomove, target):
         f.delete("highlight")
-        f.delete("piece")
-        x,y,piece=self.board_data.get(tomove)
-        x2,y2,_ = self.board_data.get(target) # Piece is left blank here because it just means that piece got taken
-        self.board_data[tomove] = (x,y,None)
-        self.board_data[target] = (x2,y2,piece)
-        start = "A8"
-        for i in range(64):
-            nx, ny, npiece = self.board_data.get(start)
 
-            if npiece is not None:
-                img = self._img_refs.get(npiece)
-                f.create_image(nx, ny, image=img, tags="piece")
+        x1, y1, piece = self.board_data[tomove]
+        x2, y2, _ = self.board_data[target]
 
-            start = self.__progression(start)
+        if piece is None:
+            return
 
-            if start == "None":
-                break
+        self.board_data[tomove] = (x1, y1, None)
+
+        img = self._img_refs[piece]
+
+        moving_piece = f.create_image(x1, y1, image=img, tags="piece")
+
+        steps = 20
+        dx = (x2 - x1) / steps
+        dy = (y2 - y1) / steps
+
+        def animate(step):
+            if step >= steps:
+                f.delete(moving_piece)
+                self.board_data[target] = (x2, y2, piece)
+                self.redraw_pieces()
+                return
+
+            f.move(moving_piece, dx, dy)
+            f.after(15, animate, step + 1)
+
+        animate(0)
+
+        
     
     def draw_pieces(self):
         f.delete("piece")
