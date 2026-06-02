@@ -30,7 +30,7 @@ class Board:
         self.board_data = {} # "board location":(x,y,piece_info) is the format data is stored in
         self.piece_size = max(1, int(min(self.sqw, self.sqh) * 0.98))
         self._img_refs = {}
-
+        self.BlackPlaying = False
         self.state = [
             ['br','bn','bb','bq','bk','bb','bn','br'],
             ['bp']*8,
@@ -90,6 +90,7 @@ class Board:
                 img = self._img_refs[piece]
                 f.create_image(x, y, image=img, tags="piece")
     
+    
     def update_piece(self, tomove, target):
         f.delete("highlight")
 
@@ -105,7 +106,7 @@ class Board:
 
         moving_piece = f.create_image(x1, y1, image=img, tags="piece")
 
-        steps = 20
+        steps = 10
         dx = (x2 - x1) / steps
         dy = (y2 - y1) / steps
 
@@ -170,14 +171,37 @@ class Board:
             tags="highlight"
         )
     
+    def validate_move(self, square):
+        _, _, piece = self.board_data.get(self.tomove)
+
+        if piece is None:
+            return  # nothing to move
+
+        color = piece[0]  # 'b' or 'w'
+
+        # check turn
+        if color == 'b' and not self.BlackPlaying:
+            return
+        if color == 'w' and self.BlackPlaying:
+            return
+
+        # move is valid -> execute
+        self.update_piece(self.tomove, square)
+
+        # switch turn ONLY once
+        self.BlackPlaying = not self.BlackPlaying
+    
 
     def on_click(self, event):
+        
         self.highlight_square(self._get_square(event))
         if self.tomove == "":
             self.tomove = self._get_square(event)
         else:
-            self.update_piece(self.tomove, self._get_square(event))
+            self.validate_move(self._get_square(event))
             self.tomove = ""
+
+        print(self.board_data)
 
 
 
