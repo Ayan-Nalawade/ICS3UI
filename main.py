@@ -201,7 +201,7 @@ class Board:
             self.validate_move(self._get_square(event))
             self.tomove = ""
 
-        print(self.board_data)
+        print(f"{self.board_data} \n")
 
 
 
