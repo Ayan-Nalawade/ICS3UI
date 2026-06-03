@@ -28,6 +28,12 @@ class Board:
         self.sqh = HEIGHT//6 # Get the square height required for each square of the board
         self.sqw = WIDTH//6 # Get the square width required for each square of the board
         self.board_data = {} # x,y,piece (None=Nothing, True=Player, False, Bot)
+
+    def __pl_location(self):
+        for square, (_, _, piece) in self.board_data.items():
+            if piece is True:
+                return square
+        return None
     
     def __progression(self, character) -> str:
         if character == "None":  # Guard
@@ -51,7 +57,7 @@ class Board:
             f.create_oval(x-r,y-r,x+r, y+r, outline=None, fill="Red", tags="bot")
         
         self.board_data[current] = (x,y,None) 
-        self.board_data[target] = (x,y,True)
+        self.board_data[target] = (x,y,pl)
         
     
     def show_notation(self):
@@ -84,24 +90,41 @@ class Board:
                 self.board_data[current] = (centrex, centrey, None)
                 current = self.__progression(current)
                 # Centre will be used to actually move the pieces
-        print(self.board_data)
 
     def validate_move(self, command:str):
         if command.lower() == "up":
-            print(self.board_data)
+            location = self.__pl_location()
+            one,two = location[0], location[1] # A 6 
+            if two == '6': # If the top most row is found, later will impliment won screen or something
+                return 1
+            else:
+                self.draw_player(True, location, f"{one}{int(two)+1}")
+                return 0
+        elif command.lower() == "down":
+            location = self.__pl_location()
+            one,two = location[0], location[1] # A 6 
+            if two == '1': # If the bottom most row is found, later will impliment lost screen or something
+                return 1
+            else:
+                self.draw_player(True, location, f"{one}{int(two)-1}")
+                print(f"DEBUG: Moving player from {location} to {one}{int(two)-1}")
+                return 0
     
     def onplayerclick(self, event):
 
         if event.keysym.lower() == "up":
             self.validate_move("up")
             return
+        elif event.keysym.lower() == "down":
+            self.validate_move("down")
+            return
 
 
 c = Board()
 c.draw_board()
 c.show_notation()
-c.draw_player(True, "A7", "C1")
-c.draw_player(False, "A7", "D6")
+c.draw_player(True, "D6", "A1")
+c.draw_player(False, "C1", "A6")
 r.bind("<Key>", c.onplayerclick)
 f.focus_set()
 r.mainloop()
