@@ -56,10 +56,10 @@ class Board:
     
     def show_notation(self):
         start = "A6"
-        for row in range(0,6):
-            for col in range(0,6):
+        for _ in range(0,6):
+            for _ in range(0,6):
                 x,y,_ = self.board_data.get(start)
-                text_element = f.create_text(
+                _ = f.create_text(
                         x, 
                         y, 
                         text=start, 
@@ -86,9 +86,22 @@ class Board:
                 # Centre will be used to actually move the pieces
         print(self.board_data)
 
+    def validate_move(self, command:str):
+        if command.lower() == "up":
+            print("up")
+    
+    def onplayerclick(self, event):
+
+        if event.keysym.lower() == "up":
+            self.validate_move("up")
+            return
+
+
 c = Board()
 c.draw_board()
 c.show_notation()
 c.draw_player(True, "A7", "C1")
 c.draw_player(False, "A7", "D6")
-f.mainloop()
+r.bind("<Key>", c.onplayerclick)
+f.focus_set()
+r.mainloop()
