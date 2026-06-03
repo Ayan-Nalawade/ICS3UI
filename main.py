@@ -88,7 +88,7 @@ class Board:
 
     def validate_move(self, command:str):
         if command.lower() == "up":
-            print("up")
+            print(self.board_data)
     
     def onplayerclick(self, event):
 
