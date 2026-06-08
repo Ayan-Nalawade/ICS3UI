@@ -10,10 +10,10 @@ if WIDTH > 1000:
     WIDTH = 1000
 if HEIGHT > 1000: 
     HEIGHT = 1000
-if WIDTH < 500: 
+if WIDTH < 200: 
     WIDTH = 600
     print("Please resize WIDTH")
-if HEIGHT < 500: 
+if HEIGHT < 200: 
     HEIGHT = 600
     print("Please resize HEIGHT")
 
@@ -55,17 +55,24 @@ class Board:
         
     def rightside(self): 
         HEIGHTy = 0
-        HEIGHTy2 = HEIGHT
         WIDTHx = WIDTH
         WIDTHx2 = WIDTH + 200
-        txtsize = 20
         
         ptxtx = (WIDTHx2+WIDTHx)//2
         ptxty = HEIGHTy+25
         f.create_text(ptxtx, ptxty, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup")
         
-        f.create_text(ptxtx, ptxty+100, text="Bot:", font=("Helvetica", 20, "italic underline"), tags="bottxt")
-        f.create_rectangle(ptxtx+20, ptxty+20,ptxtx+20, ptxtx+20)
+        f.create_text(ptxtx, ptxty+80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt")
+        rect_size = 20
+        rect_spacing = 5
+        for i in range(3):
+            x_offset = ptxtx + 70 + i * (rect_size + rect_spacing)
+            f.create_rectangle(x_offset, ptxty+65, x_offset+rect_size, ptxty+85, outline="black", tags="bot_rect")
+        
+        f.create_text(ptxtx, ptxty+130, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt")
+        for i in range(3):
+            x_offset = ptxtx + 70 + i * (rect_size + rect_spacing)
+            f.create_rectangle(x_offset, ptxty+115, x_offset+rect_size, ptxty+135, outline="black", tags="player_rect")
 
         
         
