@@ -34,6 +34,10 @@ class Board:
         self.won = False
         self.pl_last_dir = "down"
         self.bot_last_dir = "down"
+        self.sticks_left = 4
+        self.stick_orientation = "horizontal"
+        self.horizontal_walls = set()
+        self.vertical_walls = set()
 
         def load_sprite(path):
             img = Image.open(path).convert("RGBA")
@@ -74,10 +78,18 @@ class Board:
             x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
             f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="black", fill="#D3D3D3", tags=f"player_rect{i}")
 
-        
-        
-        
-        
+        f.create_text(ptxtx - 45, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt")
+        f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval")
+        f.create_text(ptxtx - 45, ptxty + 300, text="Stick Dir:", font=("Helvetica", 16, "bold"), anchor="w", tags="dirtxt")
+        f.create_text(ptxtx + 55, ptxty + 300, text=self.stick_orientation.capitalize(), font=("Helvetica", 16, "bold"), anchor="w", tags="dirval")
+        f.create_text(ptxtx, ptxty + 340, text="(Right-click or press 'Space'\nto flip)", font=("Helvetica", 10, "italic"), justify="center", tags="dirhint")
+
+    def toggle_orientation(self, event=None):
+        if self.stick_orientation == "horizontal":
+            self.stick_orientation = "vertical"
+        else:
+            self.stick_orientation = "horizontal"
+        f.itemconfigure("dirval", text=self.stick_orientation.capitalize())
 
     def __piece_location(self, pl: bool):
         for square, (_, _, occupant) in self.board_data.items():
@@ -151,15 +163,28 @@ class Board:
 
         if direction == "up":
             if row == 6: return 1
+            if (col, row) in self.horizontal_walls: 
+                return 1
+            
             target = f"{col}{row+1}"
         elif direction == "down":
             if row == 1: return 1
+            if (col, row-1) in self.horizontal_walls: 
+                return 1
+            
             target = f"{col}{row-1}"
         elif direction == "left":
             if col == "A": return 1
-            target = f"{chr(ord(col)-1)}{row}"
+            prev_col = chr(ord(col)-1)
+            if (prev_col, row) in self.vertical_walls:
+                return 1
+            
+            target = f"{prev_col}{row}"
         elif direction == "right":
-            if col == "F": return 1
+            if col == "F": 
+                return 1
+            if (col, row) in self.vertical_walls: 
+                return 1
             target = f"{chr(ord(col)+1)}{row}"
         else:
             return 1
@@ -191,12 +216,12 @@ class Board:
                 self.won = True
 
         if not self.won:
-            r.after(200, self.check_win)
+            r.after(50, self.check_win)
 
     def bot(self):
         if self.won:
             return
-        r.after(5000, self.bot)
+        r.after(1000, self.bot)
         k = self.validate_move("down", False)
         if k == 1:
             m = randint(0, 1)
@@ -209,9 +234,66 @@ class Board:
                 if x == 1:
                     self.validate_move("left", False)
 
+    def on_mouse_click(self, event):
+        if self.won or self.sticks_left <= 0:
+            return
+        
+        x2 = event.x // self.sqw
+        y2 = event.y // self.sqh
+        
+        if x2 >= 6 or y2 >= 6 or x2 < 0 or y2 < 0: # Basically if the user clicks outside
+            return
+        
+        placed = False
+        if self.stick_orientation == "horizontal":
+            center_y = y2 * self.sqh + self.sqh // 2
+            if event.y < center_y:
+                wall_row = 6 - y2
+                if wall_row < 6:
+                    wall = (chr(ord('A') + x2), wall_row)
+                    if wall not in self.horizontal_walls:
+                        self.horizontal_walls.add(wall)
+                        line_y = y2 * self.sqh
+                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        placed = True
+            else:
+                wall_row = 5 - y2
+                if wall_row >= 1:
+                    wall = (chr(ord('A') + x2), wall_row)
+                    if wall not in self.horizontal_walls:
+                        self.horizontal_walls.add(wall)
+                        line_y = (y2 + 1) * self.sqh
+                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        placed = True
+        else:
+            center_x = x2 * self.sqw + self.sqw // 2
+            row_str = 6 - y2
+            if event.x < center_x:
+                if x2 > 0:
+                    wall = (chr(ord('A') + x2 - 1), row_str)
+                    if wall not in self.vertical_walls:
+                        self.vertical_walls.add(wall)
+                        line_x = x2 * self.sqw
+                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        placed = True
+            else:
+                if x2 < 5:
+                    wall = (chr(ord('A') + x2), row_str)
+                    if wall not in self.vertical_walls:
+                        self.vertical_walls.add(wall)
+                        line_x = (x2 + 1) * self.sqw
+                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        placed = True
+
+        if placed:
+            self.sticks_left -= 1
+            f.itemconfigure("sticksval", text=str(self.sticks_left))
+
     def onplayerclick(self, event):
         key = event.keysym.lower()
-        if key in ("up", "down", "left", "right"):
+        if key == "space":
+            self.toggle_orientation()
+        elif key in ("up", "down", "left", "right"):
             self.validate_move(key, True)
 
 
@@ -224,5 +306,8 @@ c.rightside()
 c.bot()
 c.check_win()
 r.bind("<Key>", c.onplayerclick)
+r.bind("<Button-3>", c.toggle_orientation)
+r.bind("<Button-2>", c.toggle_orientation)
+f.bind("<Button-1>", c.on_mouse_click)
 f.focus_set()
 r.mainloop()
