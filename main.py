@@ -35,6 +35,7 @@ class Board:
         self.pl_last_dir = "down"
         self.bot_last_dir = "down"
         self.sticks_left = 4
+        self.bot_sticks_left = 4
         self.stick_orientation = "horizontal"
         self.horizontal_walls = set()
         self.vertical_walls = set()
@@ -222,6 +223,38 @@ class Board:
         if self.won:
             return
         r.after(1000, self.bot)
+        
+        # 1 in 3 chance the bot decides to place a stick instead of moving (if it has any left)
+        if self.bot_sticks_left > 0 and randint(0, 2) == 0:
+            placed = False
+            for _ in range(20): # Try up to 20 random spots
+                if randint(0, 1) == 0: # Try horizontal
+                    x2 = randint(0, 5)
+                    wall_row = randint(1, 5)
+                    wall = (chr(ord('A') + x2), wall_row)
+                    if wall not in self.horizontal_walls:
+                        self.horizontal_walls.add(wall)
+                        y2 = 6 - wall_row
+                        line_y = y2 * self.sqh
+                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        placed = True
+                        break
+                else: # Try vertical
+                    x2 = randint(0, 4)
+                    wall_row = randint(1, 6)
+                    wall = (chr(ord('A') + x2), wall_row)
+                    if wall not in self.vertical_walls:
+                        self.vertical_walls.add(wall)
+                        y2 = 6 - wall_row
+                        line_x = (x2 + 1) * self.sqw
+                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        placed = True
+                        break
+            
+            if placed:
+                self.bot_sticks_left -= 1
+                return # Skip movement since the bot spent its turn placing a stick
+
         k = self.validate_move("down", False)
         if k == 1:
             m = randint(0, 1)
@@ -254,7 +287,7 @@ class Board:
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
                         line_y = y2 * self.sqh
-                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="blue", tags="wall")
                         placed = True
             else:
                 wall_row = 5 - y2
@@ -263,7 +296,7 @@ class Board:
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
                         line_y = (y2 + 1) * self.sqh
-                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="blue", tags="wall")
                         placed = True
         else:
             center_x = x2 * self.sqw + self.sqw // 2
