@@ -1,215 +1,228 @@
 import tkinter as tk
-from time import sleep
-from random import *
-from math import *
-
+from random import randint
 from PIL import Image, ImageTk
-
 
 r = tk.Tk()
 
-WIDTH = r.winfo_screenwidth() # x
-HEIGHT = r.winfo_screenheight() # y
+WIDTH = r.winfo_screenwidth()
+HEIGHT = r.winfo_screenheight()
 if WIDTH > 1000: 
     WIDTH = 1000
-if HEIGHT > 1000:
+if HEIGHT > 1000: 
     HEIGHT = 1000
-# Check if the HEIGHT or WIDTH is greater than 1000, if so make it 1000 so it doesn't take up the entire screen
-if WIDTH < 500:
+if WIDTH < 300: 
     WIDTH = 600
-if HEIGHT < 500:
+    print("Please resize WIDTH")
+if HEIGHT < 300: 
     HEIGHT = 600
-# Account for minimum 500, so the board isn't drawn in a 1x1 pixel box if the user wants to be fancy
+    print("Please resize HEIGHT")
+
+
 f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="#FFFFFF")
 f.pack()
 
+WIDTH -= 200
+
+SPRITE_SIZE = 64
+
 class Board:
     def __init__(self):
-        self.sqh = HEIGHT//8 # Get the square height required for each square of the board
-        self.sqw = WIDTH//8 # Get the square width required for each square of the board
-        self.board_data = {} # "board location":(x,y,piece_info) is the format data is stored in
-        self.piece_size = max(1, int(min(self.sqw, self.sqh) * 0.98))
-        self._img_refs = {}
-        self.BlackPlaying = False
-        self.state = [
-            ['br','bn','bb','bq','bk','bb','bn','br'],
-            ['bp']*8,
-            [None]*8,
-            [None]*8,
-            [None]*8,
-            [None]*8,
-            ['wp']*8,
-            ['wr','wn','wb','wq','wk','wb','wn','wr']
-        ]
-        self.tomove = ""
-    
+        self.sqh = HEIGHT // 6
+        self.sqw = WIDTH // 6
+        self.board_data = {}
+        self.check_who = True
+        self.won = False
+        self.pl_last_dir = "down"
+        self.bot_last_dir = "down"
+
+        def load_sprite(path):
+            img = Image.open(path).convert("RGBA")
+            img = img.resize((SPRITE_SIZE, SPRITE_SIZE), Image.LANCZOS)
+            return ImageTk.PhotoImage(img)
+
+        self.pl_sprites = {
+            "up":    load_sprite("Back.png"),
+            "down":  load_sprite("Front.png"),
+            "left":  load_sprite("Left.png"),
+            "right": load_sprite("Right.png"),
+        }
+        self.bot_sprites = {
+            "up":    load_sprite("BackBot.png"),
+            "down":  load_sprite("FrontBot.png"),
+            "left":  load_sprite("LeftBot.png"),
+            "right": load_sprite("RightBot.png"),
+        }
+        
+    def rightside(self): 
+        HEIGHTy = 50
+        WIDTHx = WIDTH
+        WIDTHx2 = WIDTH + 200
+        
+        ptxtx = WIDTHx + 100
+        ptxty = HEIGHTy + 25
+        f.create_text(ptxtx, ptxty, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup")
+        
+        f.create_text(ptxtx, ptxty + 80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt")
+        rect_size = 30
+        rect_spacing = 15
+        for i in range(3):
+            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+            f.create_rectangle(x_offset, ptxty + 100, x_offset + rect_size, ptxty + 130, outline="black", fill="#D3D3D3", tags=f"bot_rect{i}")
+        
+        f.create_text(ptxtx, ptxty + 170, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt")
+        for i in range(3):
+            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+            f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="black", fill="#D3D3D3", tags=f"player_rect{i}")
+
+        
+        
+        
+        
+
+    def __piece_location(self, pl: bool):
+        for square, (_, _, occupant) in self.board_data.items():
+            if occupant == pl:
+                return square
+        return None
 
     def __progression(self, character) -> str:
-        if character == "None":  # Guard
+        if character == "None":
             return "None"
         one, two = character[0], character[1]
         one = ord(one)
-        if one == 72:
-            if two == '1': 
+        if one == 70:
+            if two == "1":
                 return "None"
             return f"A{int(two)-1}"
         return f"{chr(one+1)}{two}"
 
-        
-    def progression_test(self): # Test if the Blocks are correctly replying with the correct progression
-        start = "A8"
-        for i in range(64):
-            x = self.__progression(start)
-            start = x
-            print(start)
-
-    def draw_board(self):
-        current = "A8"
-        for i in range(0,8): # Each row
-            for x in range(0,8): # Each coloumn
-                if (i + x) % 2 == 0:
-                    colour = "#949494"
-                else:
-                    colour = "#925300"
-                
-                f.create_rectangle(x * self.sqw, i * self.sqh, (x+1) * self.sqw, (i+1) * self.sqh, fill=colour, tags="square")
-            
-
-                centrex = x * self.sqw + self.sqw // 2  # center x of square
-                centrey = i * self.sqh + self.sqh // 2  # center y of square
-                self.board_data[current] = (centrex, centrey, "None")
-                # Centre will be used to actually move the pieces
-                current = self.__progression(current)
-        # print(self.board_data)
-
-    def redraw_pieces(self):
-        f.delete("piece")
-
-        for square, (x, y, piece) in self.board_data.items():
-            if piece is not None:
-                img = self._img_refs[piece]
-                f.create_image(x, y, image=img, tags="piece")
-    
-    
-    def update_piece(self, tomove, target):
-        f.delete("highlight")
-
-        x1, y1, piece = self.board_data[tomove]
+    def draw_player(self, pl: bool, current: str, target: str, direction: str = None):
+        x, y, _ = self.board_data[current]
         x2, y2, _ = self.board_data[target]
 
-        if piece is None:
-            return
+        if pl:
+            if direction:
+                self.pl_last_dir = direction
+            sprite = self.pl_sprites[self.pl_last_dir]
+            f.delete("pl")
+            f.create_image(x2, y2, image=sprite, anchor="center", tags="pl")
+        else:
+            if direction:
+                self.bot_last_dir = direction
+            sprite = self.bot_sprites[self.bot_last_dir]
+            f.delete("bot")
+            f.create_image(x2, y2, image=sprite, anchor="center", tags="bot")
 
-        self.board_data[tomove] = (x1, y1, None)
+        self.board_data[current] = (x, y, None)
+        self.board_data[target] = (x2, y2, pl)
 
-        img = self._img_refs[piece]
-
-        moving_piece = f.create_image(x1, y1, image=img, tags="piece")
-
-        steps = 10
-        dx = (x2 - x1) / steps
-        dy = (y2 - y1) / steps
-
-        def animate(step):
-            if step >= steps:
-                f.delete(moving_piece)
-                self.board_data[target] = (x2, y2, piece)
-                self.redraw_pieces()
-                return
-
-            f.move(moving_piece, dx, dy)
-            f.after(15, animate, step + 1)
-
-        animate(0)
-
-        
-    
-    def draw_pieces(self):
-        f.delete("piece")
-        files = {'r','n','b','q','k','p'}
-
-        if not self._img_refs:
-            for color in ('b', 'w'):
-                for key in files:
-                    img = Image.open(f"{color}{key}.png").convert("RGBA")
-                    img = img.resize((self.piece_size, self.piece_size), Image.LANCZOS)
-                    self._img_refs[color+key] = ImageTk.PhotoImage(img)
-
-        start = "A8"
-        for row in range(0,8):
-            for col in range(0,8):
-                piece = self.state[row][col]
+    def show_notation(self):
+        start = "A6"
+        for _ in range(6):
+            for _ in range(6):
                 x, y, _ = self.board_data.get(start)
-                self.board_data[start] = (x, y, piece)
-                if piece:  # Only draw if there's actually a piece
-                    img = self._img_refs.get(piece)
-                    if img:
-                        f.create_image(x, y, image=img, tags="piece")
+                f.create_text(x, y, text=start, fill="blue",
+                              font=("Helvetica", 20, "bold"), tags="notation")
                 start = self.__progression(start)
 
-    def _get_square(self, event): # This function now maps the square to the coordinates
-        col = event.x // self.sqw
-        row = event.y // self.sqh
+    def draw_board(self):
+        current = "A6"
+        for i in range(6):
+            for x in range(6):
+                f.create_rectangle(
+                    x * self.sqw, i * self.sqh,
+                    (x+1) * self.sqw, (i+1) * self.sqh,
+                    fill="#E2E2E2", tags="square"
+                )
+                centrex = x * self.sqw + self.sqw // 2
+                centrey = i * self.sqh + self.sqh // 2
+                self.board_data[current] = (centrex, centrey, None)
+                current = self.__progression(current)
 
-        file = chr(ord('A') + col)
-        rank = 8 - row
+    def validate_move(self, command: str, pl: bool):
+        location = self.__piece_location(pl)
+        if location is None or self.won:
+            return 1
 
-        return f"{file}{rank}"
-    
-    def highlight_square(self, square):
-        f.delete("highlight")
+        col = location[0]
+        row = int(location[1])
+        direction = command.lower()
+        target = None
 
-        x, y, _ = self.board_data[square]
-
-        f.create_rectangle(
-            x - self.sqw//2,
-            y - self.sqh//2,
-            x + self.sqw//2,
-            y + self.sqh//2,
-            outline="blue",
-            width=4,
-            tags="highlight"
-        )
-    
-    def validate_move(self, square):
-        _, _, piece = self.board_data.get(self.tomove)
-
-        if piece is None:
-            return  # nothing to move
-
-        color = piece[0]  # 'b' or 'w'
-
-        # check turn
-        if color == 'b' and not self.BlackPlaying:
-            return
-        if color == 'w' and self.BlackPlaying:
-            return
-
-        # move is valid -> execute
-        self.update_piece(self.tomove, square)
-
-        # switch turn ONLY once
-        self.BlackPlaying = not self.BlackPlaying
-    
-
-    def on_click(self, event):
-        
-        self.highlight_square(self._get_square(event))
-        if self.tomove == "":
-            self.tomove = self._get_square(event)
+        if direction == "up":
+            if row == 6: return 1
+            target = f"{col}{row+1}"
+        elif direction == "down":
+            if row == 1: return 1
+            target = f"{col}{row-1}"
+        elif direction == "left":
+            if col == "A": return 1
+            target = f"{chr(ord(col)-1)}{row}"
+        elif direction == "right":
+            if col == "F": return 1
+            target = f"{chr(ord(col)+1)}{row}"
         else:
-            self.validate_move(self._get_square(event))
-            self.tomove = ""
+            return 1
 
-        print(f"{self.board_data} \n")
+        x, y, piece = self.board_data[target]
+        if piece is not None:
+            return 1
 
+        self.draw_player(pl, location, target, direction)
+        print(f"DEBUG: Moving {'player' if pl else 'bot'} from {location} to {target}")
+        return 0
 
+    def check_win(self):
+        location = self.__piece_location(self.check_who)
+        one, two = location[0], location[1]
+        if self.check_who:
+            self.check_who = False
+            if two == "6":
+                f.delete("all")
+                f.create_text((WIDTH+200)//2, HEIGHT//2, text="You Won!",
+                              font=("Helvetica", 48, "bold"), fill="green")
+                self.won = True
+        else:
+            self.check_who = True
+            if two == "1":
+                f.delete("all")
+                f.create_text((WIDTH+200)//2, HEIGHT//2, text="Bot Won!",
+                              font=("Helvetica", 48, "bold"), fill="red")
+                self.won = True
 
+        if not self.won:
+            r.after(200, self.check_win)
+
+    def bot(self):
+        if self.won:
+            return
+        r.after(5000, self.bot)
+        k = self.validate_move("down", False)
+        if k == 1:
+            m = randint(0, 1)
+            if m == 0:
+                x = self.validate_move("left", False)
+                if x == 1:
+                    self.validate_move("right", False)
+            else:
+                x = self.validate_move("right", False)
+                if x == 1:
+                    self.validate_move("left", False)
+
+    def onplayerclick(self, event):
+        key = event.keysym.lower()
+        if key in ("up", "down", "left", "right"):
+            self.validate_move(key, True)
 
 
 c = Board()
-# c.progression_test()
 c.draw_board()
-c.draw_pieces()
-f.bind("<Button-1>", c.on_click)
-f.mainloop()
+c.show_notation()
+c.draw_player(True, "C1", "C1", "down")
+c.draw_player(False, "D6", "D6", "down")
+c.rightside()
+c.bot()
+c.check_win()
+r.bind("<Key>", c.onplayerclick)
+f.focus_set()
+r.mainloop()
