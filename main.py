@@ -37,7 +37,6 @@ class Board:
         self.bot_last_dir = "down"
         self.sticks_left = 4
         self.bot_sticks_left = 4
-        self.stick_orientation = "horizontal"
         self.horizontal_walls = set()
         self.vertical_walls = set()
         self.tick = 0
@@ -96,16 +95,6 @@ class Board:
 
         f.create_text(ptxtx - 45, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
         f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
-        f.create_text(ptxtx - 45, ptxty + 300, text="Stick Dir:", font=("Helvetica", 16, "bold"), anchor="w", tags="dirtxt", fill="white")
-        f.create_text(ptxtx + 55, ptxty + 300, text=self.stick_orientation.capitalize(), font=("Helvetica", 16, "bold"), anchor="w", tags="dirval", fill="#FFEB3B")
-        f.create_text(ptxtx, ptxty + 340, text="(Right-click or press 'Space'\nto flip)", font=("Helvetica", 10, "italic"), justify="center", tags="dirhint", fill="#BDBDBD")
-
-    def toggle_orientation(self, event=None):
-        if self.stick_orientation == "horizontal":
-            self.stick_orientation = "vertical"
-        else:
-            self.stick_orientation = "horizontal"
-        f.itemconfigure("dirval", text=self.stick_orientation.capitalize())
 
     def __piece_location(self, pl: bool):
         for square, (_, _, occupant) in self.board_data.items():
@@ -350,8 +339,15 @@ class Board:
         if x2 >= 6 or y2 >= 6 or x2 < 0 or y2 < 0: # Basically if the user clicks outside
             return
         
+        # Calculate distance to all 4 edges of the clicked cell to determine stick orientation
+        dist_left = event.x - (x2 * self.sqw)
+        dist_right = ((x2 + 1) * self.sqw) - event.x
+        dist_top = event.y - (y2 * self.sqh)
+        dist_bottom = ((y2 + 1) * self.sqh) - event.y
+        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
+
         placed = False
-        if self.stick_orientation == "horizontal":
+        if min_dist in (dist_top, dist_bottom):
             center_y = y2 * self.sqh + self.sqh // 2
             if event.y < center_y:
                 wall_row = 6 - y2
@@ -397,9 +393,7 @@ class Board:
 
     def onplayerclick(self, event):
         key = event.keysym.lower()
-        if key == "space":
-            self.toggle_orientation()
-        elif key in ("up", "down", "left", "right"):
+        if key in ("up", "down", "left", "right"):
             self.validate_move(key, True)
 
 
@@ -413,8 +407,6 @@ c.bot()
 c.animate_jungle()
 c.check_win()
 r.bind("<Key>", c.onplayerclick)
-r.bind("<Button-3>", c.toggle_orientation)
-r.bind("<Button-2>", c.toggle_orientation)
 f.bind("<Button-1>", c.on_mouse_click)
 f.focus_set()
 r.mainloop()
