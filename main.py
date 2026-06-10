@@ -380,7 +380,7 @@ class Board:
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         line_x = x2 * self.sqw
-                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="blue", tags="wall")
                         placed = True
             else:
                 if x2 < 5:
@@ -388,7 +388,7 @@ class Board:
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         line_x = (x2 + 1) * self.sqw
-                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="blue", tags="wall")
                         placed = True
 
         if placed:
