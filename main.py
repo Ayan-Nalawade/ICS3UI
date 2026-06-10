@@ -1,5 +1,6 @@
 import tkinter as tk
 from random import randint
+import math
 from PIL import Image, ImageTk
 
 r = tk.Tk()
@@ -18,7 +19,7 @@ if HEIGHT < 300:
     print("Please resize HEIGHT")
 
 
-f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="#FFFFFF")
+f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="#0B1F05")
 f.pack()
 
 WIDTH -= 200
@@ -39,6 +40,20 @@ class Board:
         self.stick_orientation = "horizontal"
         self.horizontal_walls = set()
         self.vertical_walls = set()
+        self.tick = 0
+        self.snakes = []
+        snake_colors = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB"]
+        for i in range(2):
+            self.snakes.append({
+                "x": randint(0, WIDTH + 100),
+                "y": randint(0, HEIGHT),
+                "x_speed": randint(-3, 3) or 2,
+                "y_speed": randint(-3, 3) or -2,
+                "length": randint(15, 25),
+                "color": snake_colors[i],
+                "tags": f"snake_{i}",
+                "history": []
+            })
 
         def load_sprite(path):
             img = Image.open(path).convert("RGBA")
@@ -65,25 +80,25 @@ class Board:
         
         ptxtx = WIDTHx + 100
         ptxty = HEIGHTy + 25
-        f.create_text(ptxtx, ptxty, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup")
+        f.create_text(ptxtx, ptxty, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup", fill="#4CAF50")
         
-        f.create_text(ptxtx, ptxty + 80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt")
+        f.create_text(ptxtx, ptxty + 80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt", fill="white")
         rect_size = 30
         rect_spacing = 15
         for i in range(3):
             x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
-            f.create_rectangle(x_offset, ptxty + 100, x_offset + rect_size, ptxty + 130, outline="black", fill="#D3D3D3", tags=f"bot_rect{i}")
+            f.create_rectangle(x_offset, ptxty + 100, x_offset + rect_size, ptxty + 130, outline="#111", fill="#795548", tags=f"bot_rect{i}")
         
-        f.create_text(ptxtx, ptxty + 170, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt")
+        f.create_text(ptxtx, ptxty + 170, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt", fill="white")
         for i in range(3):
             x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
-            f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="black", fill="#D3D3D3", tags=f"player_rect{i}")
+            f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="#111", fill="#795548", tags=f"player_rect{i}")
 
-        f.create_text(ptxtx - 45, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt")
-        f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval")
-        f.create_text(ptxtx - 45, ptxty + 300, text="Stick Dir:", font=("Helvetica", 16, "bold"), anchor="w", tags="dirtxt")
-        f.create_text(ptxtx + 55, ptxty + 300, text=self.stick_orientation.capitalize(), font=("Helvetica", 16, "bold"), anchor="w", tags="dirval")
-        f.create_text(ptxtx, ptxty + 340, text="(Right-click or press 'Space'\nto flip)", font=("Helvetica", 10, "italic"), justify="center", tags="dirhint")
+        f.create_text(ptxtx - 45, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
+        f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
+        f.create_text(ptxtx - 45, ptxty + 300, text="Stick Dir:", font=("Helvetica", 16, "bold"), anchor="w", tags="dirtxt", fill="white")
+        f.create_text(ptxtx + 55, ptxty + 300, text=self.stick_orientation.capitalize(), font=("Helvetica", 16, "bold"), anchor="w", tags="dirval", fill="#FFEB3B")
+        f.create_text(ptxtx, ptxty + 340, text="(Right-click or press 'Space'\nto flip)", font=("Helvetica", 10, "italic"), justify="center", tags="dirhint", fill="#BDBDBD")
 
     def toggle_orientation(self, event=None):
         if self.stick_orientation == "horizontal":
@@ -134,7 +149,7 @@ class Board:
         for _ in range(6):
             for _ in range(6):
                 x, y, _ = self.board_data.get(start)
-                f.create_text(x, y, text=start, fill="blue",
+                f.create_text(x, y, text=start, fill="#8BC34A",
                               font=("Helvetica", 20, "bold"), tags="notation")
                 start = self.__progression(start)
 
@@ -142,15 +157,73 @@ class Board:
         current = "A6"
         for i in range(6):
             for x in range(6):
+                color = "#2E4A1E" if (x + i) % 2 == 0 else "#233D14"
                 f.create_rectangle(
                     x * self.sqw, i * self.sqh,
                     (x+1) * self.sqw, (i+1) * self.sqh,
-                    fill="#E2E2E2", tags="square"
+                    fill=color, outline="#1A2E0C", tags="square"
                 )
                 centrex = x * self.sqw + self.sqw // 2
                 centrey = i * self.sqh + self.sqh // 2
                 self.board_data[current] = (centrex, centrey, None)
                 current = self.__progression(current)
+
+    def animate_jungle(self):
+        if self.won:
+            return
+        
+        self.tick += 1
+
+        for snake in self.snakes:
+            # Introduce random wandering variation
+            if randint(0, 15) == 0:
+                angle = math.atan2(snake["y_speed"], snake["x_speed"]) + (randint(-1, 1) * 0.5)
+                speed = math.hypot(snake["x_speed"], snake["y_speed"])
+                snake["x_speed"] = math.cos(angle) * speed
+                snake["y_speed"] = math.sin(angle) * speed
+            
+            snake["x"] += snake["x_speed"]
+            snake["y"] += snake["y_speed"]
+            
+            # Screen edge wrap-around (clears history to avoid streaking a line across screen)
+            if snake["x"] < -20: snake["x"] = WIDTH + 220; snake["history"].clear()
+            if snake["x"] > WIDTH + 220: snake["x"] = -20; snake["history"].clear()
+            if snake["y"] < -20: snake["y"] = HEIGHT + 20; snake["history"].clear()
+            if snake["y"] > HEIGHT + 20: snake["y"] = -20; snake["history"].clear()
+            
+            # Mathematical slithering effect!
+            angle = math.atan2(snake["y_speed"], snake["x_speed"])
+            perp_angle = angle + math.pi / 2
+            slither = math.sin(self.tick * 0.5) * 6
+            
+            draw_x = snake["x"] + math.cos(perp_angle) * slither
+            draw_y = snake["y"] + math.sin(perp_angle) * slither
+            
+            snake["history"].insert(0, (draw_x, draw_y))
+            if len(snake["history"]) > snake["length"]:
+                snake["history"].pop()
+                
+            f.delete(snake["tags"])
+            
+            if len(snake["history"]) > 1:
+                # Draw the full segmented snake history tapering at the end
+                for i in range(len(snake["history"]) - 1):
+                    x1, y1 = snake["history"][i]
+                    x2, y2 = snake["history"][i+1]
+                    w = max(1, 6 - int((i / snake["length"]) * 6))
+                    f.create_line(x1, y1, x2, y2, fill=snake["color"], width=w, tags=snake["tags"], capstyle="round")
+                    
+            # Render snake layers strategically so they travel over tiles but beneath characters and walls
+            if f.find_withtag("square"):
+                f.tag_raise(snake["tags"], "square")
+            if f.find_withtag("pl"):
+                f.tag_lower(snake["tags"], "pl")
+            if f.find_withtag("bot"):
+                f.tag_lower(snake["tags"], "bot")
+            if f.find_withtag("wall"):
+                f.tag_lower(snake["tags"], "wall")
+            
+        r.after(50, self.animate_jungle)
 
     def validate_move(self, command: str, pl: bool):
         location = self.__piece_location(pl)
@@ -337,6 +410,7 @@ c.draw_player(True, "C1", "C1", "down")
 c.draw_player(False, "D6", "D6", "down")
 c.rightside()
 c.bot()
+c.animate_jungle()
 c.check_win()
 r.bind("<Key>", c.onplayerclick)
 r.bind("<Button-3>", c.toggle_orientation)
