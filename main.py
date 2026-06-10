@@ -214,6 +214,28 @@ class Board:
             
         r.after(50, self.animate_jungle)
 
+    def draw_vine(self, x1, y1, x2, y2, color):
+        points = []
+        segments = 6
+        for i in range(segments + 1):
+            vinex = x1 + (x2 - x1) * (i / segments)
+            viney = y1 + (y2 - y1) * (i / segments)
+            if 0 < i < segments:
+                if x1 == x2:  # vertical
+                    vinex += randint(-10, 10)
+                else:         # horizontal
+                    viney += randint(-10, 10)
+            points.extend([vinex, viney])
+            
+        f.create_line(*points, fill=color, width=4, smooth=True, tags="wall", capstyle="round") # points is a list, we need to unpack the values 
+        
+        # Add a few small leaves
+        for i in range(1, segments):
+            if randint(0, 1) == 0:
+                leafx, leafy = points[i*2], points[i*2+1]
+                offsetx, offsety = randint(-6, 6), randint(-6, 6)
+                f.create_oval(leafx+offsetx-4, leafy+offsety-4, leafx+offsetx+4, leafy+offsety+4, fill="#8BC34A", outline="#1B5E20", tags="wall")
+
     def validate_move(self, command: str, pl: bool):
         location = self.__piece_location(pl)
         if location is None or self.won:
@@ -298,7 +320,7 @@ class Board:
                         self.horizontal_walls.add(wall)
                         y2 = 6 - wall_row
                         line_y = y2 * self.sqh
-                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="brown", tags="wall")
+                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#2E7D32")
                         placed = True
                         break
                 else: # Try vertical
@@ -309,7 +331,7 @@ class Board:
                         self.vertical_walls.add(wall)
                         y2 = 6 - wall_row
                         line_x = (x2 + 1) * self.sqw
-                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="brown", tags="wall")
+                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#2E7D32")
                         placed = True
                         break
             
@@ -356,7 +378,7 @@ class Board:
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
                         line_y = y2 * self.sqh
-                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="blue", tags="wall")
+                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#4CAF50")
                         placed = True
             else:
                 wall_row = 5 - y2
@@ -365,7 +387,7 @@ class Board:
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
                         line_y = (y2 + 1) * self.sqh
-                        f.create_line(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, width=5, fill="blue", tags="wall")
+                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#4CAF50")
                         placed = True
         else:
             center_x = x2 * self.sqw + self.sqw // 2
@@ -376,7 +398,7 @@ class Board:
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         line_x = x2 * self.sqw
-                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="blue", tags="wall")
+                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#4CAF50")
                         placed = True
             else:
                 if x2 < 5:
@@ -384,7 +406,7 @@ class Board:
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         line_x = (x2 + 1) * self.sqw
-                        f.create_line(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, width=5, fill="blue", tags="wall")
+                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#4CAF50")
                         placed = True
 
         if placed:
