@@ -177,7 +177,7 @@ class Board:
             self.chests[square] = "closed"
 
     def draw_chests(self):
-        """Draw all chests on the board."""
+        """Draw all chests on the board, behind players."""
         f.delete("chest")
         for square, state in self.chests.items():
             data = self.board_data.get(square)
@@ -185,6 +185,10 @@ class Board:
                 x, y, _ = data
                 sprite = self.chest_sprites[state]
                 f.create_image(x, y, image=sprite, anchor="center", tags="chest")
+        if f.find_withtag("pl"):
+            f.tag_lower("chest", "pl")
+        if f.find_withtag("bot"):
+            f.tag_lower("chest", "bot")
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
         """Draw a realistic leaf shape polygon."""
