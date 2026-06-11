@@ -81,6 +81,12 @@ class Board:
             "left":  load_sprite("LeftBot.png"),
             "right": load_sprite("RightBot.png"),
         }
+        self.chest_sprites = {
+            "closed": load_sprite("chest.png"),
+            "open":   load_sprite("chest-open.png"),
+        }
+        self.chests = {}
+        self._place_chests()
         
     def rightside(self): 
         HEIGHTy = 50
@@ -156,6 +162,29 @@ class Board:
                 f.create_text(x, y, text=start, fill="#8BC34A",
                               font=("Helvetica", 20, "bold"), tags="notation")
                 start = self.__progression(start)
+
+    def _place_chests(self):
+        """Randomly place closed chests on the board, avoiding starting squares."""
+        available = []
+        for col in ["A", "B", "C", "D", "E", "F"]:
+            for row in range(1, 7):
+                available.append(f"{col}{row}")
+        available.remove("C1")
+        available.remove("D6")
+        for _ in range(randint(3, 4)):
+            square = choice(available)
+            available.remove(square)
+            self.chests[square] = "closed"
+
+    def draw_chests(self):
+        """Draw all chests on the board."""
+        f.delete("chest")
+        for square, state in self.chests.items():
+            data = self.board_data.get(square)
+            if data:
+                x, y, _ = data
+                sprite = self.chest_sprites[state]
+                f.create_image(x, y, image=sprite, anchor="center", tags="chest")
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
         """Draw a realistic leaf shape polygon."""
@@ -495,6 +524,10 @@ class Board:
             return 1
 
         self.draw_player(pl, location, target, direction)
+        # Open chest if stepping onto one
+        if target in self.chests and self.chests[target] == "closed":
+            self.chests[target] = "open"
+            self.draw_chests()
         print(f"DEBUG: Moving {'player' if pl else 'bot'} from {location} to {target}")
         return 0
 
@@ -641,6 +674,7 @@ c.draw_jungle_ambient()
 c.show_notation()
 c.draw_player(True, "C1", "C1", "down")
 c.draw_player(False, "D6", "D6", "down")
+c.draw_chests()
 c.rightside()
 c.bot()
 c.animate_jungle()
