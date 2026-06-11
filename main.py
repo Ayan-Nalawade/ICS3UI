@@ -103,8 +103,13 @@ class Board:
             x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
             f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="#111", fill="#795548", tags=f"player_rect{i}")
 
-        f.create_text(ptxtx - 45, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
+        f.create_text(ptxtx - 90, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
         f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
+
+        # Instructions
+        f.create_text(ptxtx, ptxty + 340, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
+        f.create_text(ptxtx, ptxty + 410, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
+                      font=("Helvetica", 12), tags="instructions", fill="#CCE5CC", width=170)
 
     def __piece_location(self, pl: bool):
         for square, (_, _, occupant) in self.board_data.items():
