@@ -1,5 +1,5 @@
 import tkinter as tk
-from random import randint
+from random import randint, choice, uniform
 import math
 from PIL import Image, ImageTk
 
@@ -52,6 +52,16 @@ class Board:
                 "color": snake_colors[i],
                 "tags": f"snake_{i}",
                 "history": []
+            })
+        self.fireflies = []
+        for _ in range(18):
+            self.fireflies.append({
+                "x": uniform(0, WIDTH),
+                "y": uniform(0, HEIGHT),
+                "vx": uniform(-0.4, 0.4),
+                "vy": uniform(-0.4, 0.4),
+                "phase": uniform(0, math.pi * 2),
+                "tag": f"ff_{randint(0, 99999)}"
             })
 
         def load_sprite(path):
@@ -142,67 +152,290 @@ class Board:
                               font=("Helvetica", 20, "bold"), tags="notation")
                 start = self.__progression(start)
 
+    def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
+        """Draw a realistic leaf shape polygon."""
+        angle_rad = math.radians(angle)
+        half_width = size * 0.35
+        pts = []
+        for t_rel in range(0, 181, 12):
+            t = t_rel / 180
+            along = -size + t * size * 2
+            width = half_width * math.sin(t * math.pi)
+            x = x1 + along * math.cos(angle_rad) - width * math.sin(angle_rad)
+            y = y1 + along * math.sin(angle_rad) + width * math.cos(angle_rad)
+            pts.append(x)
+            pts.append(y)
+        f.create_polygon(*pts, fill=color, outline=outline_color, width=1,
+                        smooth=True, tags=tag)
+        # Center vein
+        x2 = x1 + size * 0.7 * math.cos(angle_rad)
+        y2 = y1 + size * 0.7 * math.sin(angle_rad)
+        f.create_line(x1, y1, x2, y2, fill=outline_color, width=1, tags=tag)
+
+    def _draw_leaf_cluster(self, x1, y1, vine_angle):
+        """Draw leaves sprouting from a vine node."""
+        colors = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047"]
+        for i in range(randint(2, 4)):
+            off = randint(-50, 50)
+            sz = randint(7, 13)
+            self._draw_leaf_shape(
+                x1 + randint(-3, 3), y1 + randint(-3, 3),
+                vine_angle + off, sz, choice(colors), "#0B3D0B"
+            )
+
+    def _draw_tendril(self, x1, y1, angle, length):
+        """Draw a curly vine tendril."""
+        pts = []
+        x, y = x1, y1
+        for i in range(24):
+            t = i / 24
+            angle2 = angle + math.sin(t * math.pi * 5) * 40
+            x += math.cos(math.radians(angle2)) * length / 24
+            y += math.sin(math.radians(angle2)) * length / 24
+            pts.extend([x, y])
+        f.create_line(*pts, fill="#4CAF50", width=1, smooth=True, tags="wall")
+
+    def draw_vine(self, x1, y1, x2, y2, color):
+        """Draw a realistic organic vine with leaves and tendrils."""
+        segments = 14
+        horiz = y1 == y2
+
+        pts = []
+        for i in range(segments + 1):
+            t = i / segments
+            x = x1 + (x2 - x1) * t
+            y = y1 + (y2 - y1) * t
+            if 0 < i < segments:
+                wiggle = math.sin(t * math.pi * 3 + self.tick * 0.03) * (5 + 3 * math.sin(t * math.pi))
+                if horiz:
+                    y += wiggle
+                else:
+                    x += wiggle
+            pts.extend([x, y])
+
+        # Three layers for depth: dark shadow, main body, highlight
+        f.create_line(*pts, fill="#0B3D0B", width=7, smooth=True, tags="wall", capstyle="round")
+        f.create_line(*pts, fill=color, width=5, smooth=True, tags="wall", capstyle="round")
+        f.create_line(*pts, fill="#66BB6A", width=2, smooth=True, tags="wall", capstyle="round")
+
+        # Leaves along the vine
+        vine_angle = 0 if horiz else 90
+        for i in range(2, segments, 3):
+            x, y = pts[i * 2], pts[i * 2 + 1]
+            side = 90 if i % 2 == 0 else -90
+            self._draw_leaf_cluster(x, y, vine_angle + side)
+
+        # Occasional tendril
+        if randint(0, 2) == 0:
+            idx = randint(2, segments - 2)
+            x, y = pts[idx * 2], pts[idx * 2 + 1]
+            self._draw_tendril(x, y, vine_angle + choice([-60, 60]), randint(15, 25))
+
+    def _draw_grass_blade(self, x, y, height, lean):
+        """Draw a single curved grass blade."""
+        f.create_line(
+            x, y,
+            x + lean * 0.3, y - height * 0.6,
+            x + lean, y - height,
+            fill=choice(["#4CAF50", "#66BB6A", "#388E3C", "#2E7D32"]),
+            width=1, smooth=True, tags="tile_detail"
+        )
+
+    def _draw_tile_texture(self, x, y, sqw, sqh, dark_shade):
+        """Add grass, dirt, and moss detail to a single tile."""
+        # Random dirt/moss patches
+        for _ in range(randint(2, 4)):
+            x1 = x + randint(6, sqw - 6)
+            y1 = y + randint(6, sqh - 6)
+            r2 = randint(3, 7)
+            f.create_oval(x1 - r2, y1 - r2, x1 + r2, y1 + r2,
+                         fill=dark_shade, outline="", tags="tile_detail")
+
+        # Grass blades
+        for _ in range(randint(4, 7)):
+            x1 = x + randint(4, sqw - 4)
+            y1 = y + sqh - randint(2, 5)
+            h = randint(5, 12)
+            lean = randint(-4, 4)
+            self._draw_grass_blade(x1, y1, h, lean)
+
+        # Tiny lighter speckles (decomposition highlights)
+        for _ in range(randint(1, 3)):
+            x1 = x + randint(8, sqw - 8)
+            y1 = y + randint(8, sqh - 8)
+            f.create_oval(x1 - 1, y1 - 1, x1 + 1, y1 + 1,
+                         fill="#8BC34A", outline="", tags="tile_detail")
+
     def draw_board(self):
+        """Draw the board with realistic jungle floor tiles."""
+        # Dark mossy border around the whole board
+        pad = 5
+        f.create_rectangle(-pad, -pad, WIDTH + pad, HEIGHT + pad,
+                          fill="#0B3D0B", outline="#071F05", tags="board_border")
+        # Inner shadow edge
+        f.create_rectangle(0, 0, WIDTH, HEIGHT,
+                          fill="", outline="#1A5C1A", width=2, tags="board_border")
+
         current = "A6"
         for i in range(6):
             for x in range(6):
-                color = "#2E4A1E" if (x + i) % 2 == 0 else "#233D14"
+                is_dark = (x + i) % 2 == 0
+                base = "#2E4A1E" if is_dark else "#233D14"
+                dark = "#1A3A0E" if is_dark else "#152B0B"
+
+                x1 = x * self.sqw
+                y1 = i * self.sqh
+
                 f.create_rectangle(
-                    x * self.sqw, i * self.sqh,
-                    (x+1) * self.sqw, (i+1) * self.sqh,
-                    fill=color, outline="#1A2E0C", tags="square"
+                    x1, y1, x1 + self.sqw, y1 + self.sqh,
+                    fill=base, outline="#1A2E0C", tags="square"
                 )
-                centrex = x * self.sqw + self.sqw // 2
-                centrey = i * self.sqh + self.sqh // 2
-                self.board_data[current] = (centrex, centrey, None)
+
+                self._draw_tile_texture(x1, y1, self.sqw, self.sqh, dark)
+
+                x_center = x1 + self.sqw // 2
+                y_center = y1 + self.sqh // 2
+                self.board_data[current] = (x_center, y_center, None)
                 current = self.__progression(current)
+
+    def draw_jungle_ambient(self):
+        """Draw static jungle foliage around the board edges."""
+        # Hanging vines from top of canvas
+        for i in range(10):
+            x = randint(10, WIDTH - 10)
+            vine_len = randint(50, 140)
+            pts = []
+            for j in range(12):
+                t = j / 12
+                sway = math.sin(t * math.pi * 2.5) * 10 * t
+                pts.extend([x + sway, -5 + vine_len * t])
+            f.create_line(*pts, fill="#1B5E20", width=3, smooth=True, tags="bg_foliage")
+            # Small leaf at end (ambient, not a wall)
+            self._draw_leaf_shape(
+                pts[-2], pts[-1] - 5, 90 + randint(-20, 20),
+                randint(8, 13), choice(["#2E7D32", "#388E3C"]), "#0B3D0B",
+                tag="bg_foliage"
+            )
+
+        # Dense corner foliage
+        corners = [
+            (15, 15, 135),
+            (WIDTH - 15, 15, 45),
+            (15, HEIGHT - 15, 225),
+            (WIDTH - 15, HEIGHT - 15, -45)
+        ]
+        for x, y, angle in corners:
+            for _ in range(5):
+                self._draw_leaf_shape(
+                    x + randint(-20, 20), y + randint(-20, 20),
+                    angle + randint(-50, 50), randint(14, 24),
+                    choice(["#1B5E20", "#2E7D32", "#1A4A1A"]), "#0B3D0B",
+                    tag="bg_foliage"
+                )
+
+        # Low bushes along the bottom
+        for i in range(8):
+            x = i * (WIDTH // 7) + randint(5, 25)
+            y = HEIGHT - randint(3, 12)
+            for _ in range(6):
+                dx = randint(-18, 18)
+                dy = randint(-12, 4)
+                size = randint(7, 15)
+                f.create_oval(x + dx - size, y + dy - size, x + dx + size, y + dy + size,
+                             fill="#1B5E20", outline="#0B3D0B", tags="bg_foliage")
+
+        # Push ambient behind everything
+        f.tag_lower("bg_foliage")
+        f.tag_lower("board_border")
 
     def animate_jungle(self):
         if self.won:
             return
-        
+
         self.tick += 1
 
+        # Animate fireflies
+        for firefly in self.fireflies:
+            firefly["x"] += firefly["vx"]
+            firefly["y"] += firefly["vy"]
+
+            # Bounce off edges
+            if firefly["x"] < 0 or firefly["x"] > WIDTH:
+                firefly["vx"] *= -1
+            if firefly["y"] < 0 or firefly["y"] > HEIGHT:
+                firefly["vy"] *= -1
+
+            # Random direction change
+            if randint(0, 40) == 0:
+                firefly["vx"] += uniform(-0.3, 0.3)
+                firefly["vy"] += uniform(-0.3, 0.3)
+                speed = math.hypot(firefly["vx"], firefly["vy"])
+                if speed > 1:
+                    firefly["vx"] /= speed
+                    firefly["vy"] /= speed
+
+            glow = abs(math.sin(self.tick * 0.04 + firefly["phase"]))
+            r = int(180 + 75 * glow)
+            g = int(220 + 35 * glow)
+            b = int(60 + 40 * glow)
+            color = f"#{r:02x}{g:02x}{b:02x}"
+
+            f.delete(firefly["tag"])
+
+            # Outer glow ring
+            glow_size = 4 + int(6 * glow)
+            f.create_oval(
+                firefly["x"] - glow_size, firefly["y"] - glow_size,
+                firefly["x"] + glow_size, firefly["y"] + glow_size,
+                fill=color, outline="", tags=firefly["tag"]
+            )
+            # Bright core
+            core_size = 1 + int(2 * glow)
+            f.create_oval(
+                firefly["x"] - core_size, firefly["y"] - core_size,
+                firefly["x"] + core_size, firefly["y"] + core_size,
+                fill="#FFFFDD", outline="", tags=firefly["tag"]
+            )
+
+            f.tag_raise(firefly["tag"])
+
+        # Animate snakes (original logic preserved)
         for snake in self.snakes:
-            # Introduce random wandering variation
             if randint(0, 15) == 0:
                 angle = math.atan2(snake["y_speed"], snake["x_speed"]) + (randint(-1, 1) * 0.5)
                 speed = math.hypot(snake["x_speed"], snake["y_speed"])
                 snake["x_speed"] = math.cos(angle) * speed
                 snake["y_speed"] = math.sin(angle) * speed
-            
+
             snake["x"] += snake["x_speed"]
             snake["y"] += snake["y_speed"]
-            
-            # Screen edge wrap-around (clears history to avoid streaking a line across screen)
+
             if snake["x"] < -20: snake["x"] = WIDTH + 220; snake["history"].clear()
             if snake["x"] > WIDTH + 220: snake["x"] = -20; snake["history"].clear()
             if snake["y"] < -20: snake["y"] = HEIGHT + 20; snake["history"].clear()
             if snake["y"] > HEIGHT + 20: snake["y"] = -20; snake["history"].clear()
-            
-            # Mathematical slithering effect!
+
             angle = math.atan2(snake["y_speed"], snake["x_speed"])
             perp_angle = angle + math.pi / 2
             slither = math.sin(self.tick * 0.5) * 6
-            
+
             draw_x = snake["x"] + math.cos(perp_angle) * slither
             draw_y = snake["y"] + math.sin(perp_angle) * slither
-            
+
             snake["history"].insert(0, (draw_x, draw_y))
             if len(snake["history"]) > snake["length"]:
                 snake["history"].pop()
-                
+
             f.delete(snake["tags"])
-            
+
             if len(snake["history"]) > 1:
-                # Draw the full segmented snake history tapering at the end
                 for i in range(len(snake["history"]) - 1):
                     x1, y1 = snake["history"][i]
-                    x2, y2 = snake["history"][i+1]
+                    x2, y2 = snake["history"][i + 1]
                     w = max(1, 6 - int((i / snake["length"]) * 6))
-                    f.create_line(x1, y1, x2, y2, fill=snake["color"], width=w, tags=snake["tags"], capstyle="round")
-                    
-            # Render snake layers strategically so they travel over tiles but beneath characters and walls
+                    f.create_line(x1, y1, x2, y2, fill=snake["color"], width=w,
+                                 tags=snake["tags"], capstyle="round")
+
             if f.find_withtag("square"):
                 f.tag_raise(snake["tags"], "square")
             if f.find_withtag("pl"):
@@ -211,30 +444,8 @@ class Board:
                 f.tag_lower(snake["tags"], "bot")
             if f.find_withtag("wall"):
                 f.tag_lower(snake["tags"], "wall")
-            
-        r.after(50, self.animate_jungle)
 
-    def draw_vine(self, x1, y1, x2, y2, color):
-        points = []
-        segments = 6
-        for i in range(segments + 1):
-            vinex = x1 + (x2 - x1) * (i / segments)
-            viney = y1 + (y2 - y1) * (i / segments)
-            if 0 < i < segments:
-                if x1 == x2:  # vertical
-                    vinex += randint(-10, 10)
-                else:         # horizontal
-                    viney += randint(-10, 10)
-            points.extend([vinex, viney])
-            
-        f.create_line(*points, fill=color, width=4, smooth=True, tags="wall", capstyle="round") # points is a list, we need to unpack the values 
-        
-        # Add a few small leaves
-        for i in range(1, segments):
-            if randint(0, 1) == 0:
-                leafx, leafy = points[i*2], points[i*2+1]
-                offsetx, offsety = randint(-6, 6), randint(-6, 6)
-                f.create_oval(leafx+offsetx-4, leafy+offsety-4, leafx+offsetx+4, leafy+offsety+4, fill="#8BC34A", outline="#1B5E20", tags="wall")
+        f.after(50, self.animate_jungle)
 
     def validate_move(self, command: str, pl: bool):
         location = self.__piece_location(pl)
@@ -313,25 +524,25 @@ class Board:
             placed = False
             for _ in range(20): # Try up to 20 random spots
                 if randint(0, 1) == 0: # Try horizontal
-                    x2 = randint(0, 5)
+                    x = randint(0, 5)
                     wall_row = randint(1, 5)
-                    wall = (chr(ord('A') + x2), wall_row)
+                    wall = (chr(ord('A') + x), wall_row)
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
-                        y2 = 6 - wall_row
-                        line_y = y2 * self.sqh
-                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#2E7D32")
+                        y = 6 - wall_row
+                        line_y = y * self.sqh
+                        self.draw_vine(x * self.sqw, line_y, (x + 1) * self.sqw, line_y, "#2E7D32")
                         placed = True
                         break
                 else: # Try vertical
-                    x2 = randint(0, 4)
+                    x = randint(0, 4)
                     wall_row = randint(1, 6)
-                    wall = (chr(ord('A') + x2), wall_row)
+                    wall = (chr(ord('A') + x), wall_row)
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
-                        y2 = 6 - wall_row
-                        line_x = (x2 + 1) * self.sqw
-                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#2E7D32")
+                        y = 6 - wall_row
+                        line_x = (x + 1) * self.sqw
+                        self.draw_vine(line_x, y * self.sqh, line_x, (y + 1) * self.sqh, "#2E7D32")
                         placed = True
                         break
             
@@ -421,6 +632,7 @@ class Board:
 
 c = Board()
 c.draw_board()
+c.draw_jungle_ambient()
 c.show_notation()
 c.draw_player(True, "C1", "C1", "down")
 c.draw_player(False, "D6", "D6", "down")
