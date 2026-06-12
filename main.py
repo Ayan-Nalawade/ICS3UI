@@ -88,6 +88,8 @@ class Board:
         self.chests = {}
         self.vanishing_chests = []
         self._place_chests()
+        self.player_powerups = []
+        self.bot_powerups = []
         self.win_frame = 0
         self.win_type = None
         self.win_particles = []
@@ -116,10 +118,15 @@ class Board:
         f.create_text(ptxtx - 90, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
         f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
 
+        f.create_text(ptxtx - 90, ptxty + 310, text="Bot Sticks:", font=("Helvetica", 16, "bold"), anchor="w", tags="botstickstxt", fill="white")
+        f.create_text(ptxtx + 75, ptxty + 310, text=str(self.bot_sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="botsticksval", fill="#FF9800")
+
         # Instructions
-        f.create_text(ptxtx, ptxty + 340, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
-        f.create_text(ptxtx, ptxty + 410, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
+        f.create_text(ptxtx, ptxty + 370, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
+        f.create_text(ptxtx, ptxty + 440, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
                       font=("Helvetica", 12), tags="instructions", fill="#CCE5CC", width=170)
+
+        self._draw_powerups()
 
     def __piece_location(self, pl: bool):
         for square, (_, _, occupant) in self.board_data.items():
@@ -193,6 +200,71 @@ class Board:
             f.tag_lower("chest", "pl")
         if f.find_withtag("bot"):
             f.tag_lower("chest", "bot")
+
+    def _draw_powerups(self):
+        """Draw power-up indicators in the right panel slots."""
+        f.delete("pu_indicator")
+        ptxtx = WIDTH + 100
+        ptxty = 75
+        rect_size = 30
+        rect_spacing = 15
+
+        # Bot power-ups
+        for i, pu in enumerate(self.bot_powerups[:3]):
+            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+            center_x = x_offset + rect_size // 2
+            center_y = ptxty + 100 + rect_size // 2
+            if pu == "extra_stick":
+                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#4CAF50", outline="", tags="pu_indicator")
+                f.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
+                             fill="white", tags="pu_indicator")
+            elif pu == "erase_stick":
+                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#F44336", outline="", tags="pu_indicator")
+                f.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
+                             fill="white", tags="pu_indicator")
+
+        # Player power-ups
+        for i, pu in enumerate(self.player_powerups[:3]):
+            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+            center_x = x_offset + rect_size // 2
+            center_y = ptxty + 200 + rect_size // 2
+            if pu == "extra_stick":
+                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#4CAF50", outline="", tags="pu_indicator")
+                f.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
+                             fill="white", tags="pu_indicator")
+            elif pu == "erase_stick":
+                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#F44336", outline="", tags="pu_indicator")
+                f.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
+                             fill="white", tags="pu_indicator")
+
+    def _award_powerup(self, is_player):
+        """Award a random power-up when a chest is touched."""
+        powerup = choice(["extra_stick", "erase_stick"])
+
+        if is_player:
+            self.player_powerups.append(powerup)
+            if powerup == "extra_stick":
+                self.sticks_left += 1
+            elif powerup == "erase_stick":
+                self.horizontal_walls.clear()
+                self.vertical_walls.clear()
+                f.delete("wall")
+        else:
+            self.bot_powerups.append(powerup)
+            if powerup == "extra_stick":
+                self.bot_sticks_left += 1
+            elif powerup == "erase_stick":
+                self.horizontal_walls.clear()
+                self.vertical_walls.clear()
+                f.delete("wall")
+
+        self._draw_powerups()
+        f.itemconfigure("sticksval", text=str(self.sticks_left))
+        f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
         """Draw a realistic leaf shape polygon."""
@@ -603,9 +675,10 @@ class Board:
             del self.chests[target]
             self.draw_chests()
             if pl:
-                print("DEBUG: Player touches chest")
+                print("Player touches chest")
             else:
-                print("DEBUG: Bot touches chest")
+                print("Bot touches chest")
+            self._award_powerup(pl)
         # if pl:
         #     who = "player"
         # else:
