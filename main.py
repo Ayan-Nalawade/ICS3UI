@@ -261,10 +261,16 @@ class Board:
         f.create_line(*pts, fill="#66BB6A", width=2, smooth=True, tags="wall", capstyle="round")
 
         # Leaves along the vine
-        vine_angle = 0 if horiz else 90
+        if horiz:
+            vine_angle = 0
+        else:
+            vine_angle = 90
         for i in range(2, segments, 3):
             x, y = pts[i * 2], pts[i * 2 + 1]
-            side = 90 if i % 2 == 0 else -90
+            if i % 2 == 0:
+                side = 90
+            else:
+                side = -90
             self._draw_leaf_cluster(x, y, vine_angle + side)
 
         # Occasional tendril
@@ -492,10 +498,18 @@ class Board:
             snake["x"] += snake["x_speed"]
             snake["y"] += snake["y_speed"]
 
-            if snake["x"] < -20: snake["x"] = WIDTH + 220; snake["history"].clear()
-            if snake["x"] > WIDTH + 220: snake["x"] = -20; snake["history"].clear()
-            if snake["y"] < -20: snake["y"] = HEIGHT + 20; snake["history"].clear()
-            if snake["y"] > HEIGHT + 20: snake["y"] = -20; snake["history"].clear()
+            if snake["x"] < -20:
+                snake["x"] = WIDTH + 220
+                snake["history"].clear()
+            if snake["x"] > WIDTH + 220:
+                snake["x"] = -20
+                snake["history"].clear()
+            if snake["y"] < -20:
+                snake["y"] = HEIGHT + 20
+                snake["history"].clear()
+            if snake["y"] > HEIGHT + 20:
+                snake["y"] = -20
+                snake["history"].clear()
 
             angle = math.atan2(snake["y_speed"], snake["x_speed"])
             perp_angle = angle + math.pi / 2
@@ -540,19 +554,22 @@ class Board:
         target = None
 
         if direction == "up":
-            if row == 6: return 1
+            if row == 6:
+                return 1
             if (col, row) in self.horizontal_walls: 
                 return 1
             
             target = f"{col}{row+1}"
         elif direction == "down":
-            if row == 1: return 1
+            if row == 1:
+                return 1
             if (col, row-1) in self.horizontal_walls: 
                 return 1
             
             target = f"{col}{row-1}"
         elif direction == "left":
-            if col == "A": return 1
+            if col == "A":
+                return 1
             prev_col = chr(ord(col)-1)
             if (prev_col, row) in self.vertical_walls:
                 return 1
@@ -585,7 +602,11 @@ class Board:
                 })
             del self.chests[target]
             self.draw_chests()
-        print(f"DEBUG: Moving {'player' if pl else 'bot'} from {location} to {target}")
+        if pl:
+            who = "player"
+        else:
+            who = "bot"
+        print(f"DEBUG: Moving {who} from {location} to {target}")
         return 0
 
     def check_win(self):
@@ -620,13 +641,21 @@ class Board:
         canvas_width = WIDTH + 200
 
         # Dark overlay
-        overlay = "#0A1F05" if is_win else "#1F0505"
+        if is_win:
+            overlay = "#0A1F05"
+        else:
+            overlay = "#1F0505"
         f.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
 
         # Large title with shadow
-        title = "VICTORY" if is_win else "DEFEAT"
-        title_color = "#FFD700" if is_win else "#FF3333"
-        shadow_color = "#5C3A00" if is_win else "#5C0000"
+        if is_win:
+            title = "VICTORY"
+            title_color = "#FFD700"
+            shadow_color = "#5C3A00"
+        else:
+            title = "DEFEAT"
+            title_color = "#FF3333"
+            shadow_color = "#5C0000"
         x1 = canvas_width // 2
         y1 = HEIGHT // 2 - 30
 
@@ -636,23 +665,38 @@ class Board:
                       font=("Helvetica", 64, "bold"), fill=title_color, tags="win_title")
 
         # Subtitle
-        subtitle = "You reached the other side!" if is_win else "The bot beat you!"
+        if is_win:
+            subtitle = "You reached the other side!"
+        else:
+            subtitle = "The bot beat you!"
         f.create_text(x1, y1 + 60, text=subtitle,
                       font=("Helvetica", 20), fill="#CCCCCC", tags="win_subtitle")
 
         # Particles differ by outcome
         self.win_particles = []
-        count = 50 if is_win else 30
+        if is_win:
+            count = 50
+        else:
+            count = 30
         for _ in range(count):
-            colors_win = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB", "#FFD700", "#4CAF50", "#FF9800"]
-            colors_lose = ["#8B0000", "#660000", "#CC3333", "#440000", "#992222"]
-            colors = colors_win if is_win else colors_lose
+            if is_win:
+                colors = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB", "#FFD700", "#4CAF50", "#FF9800"]
+                y_start = randint(-HEIGHT, 0)
+                speed_x = uniform(-2, 2)
+                speed_y = uniform(2, 5)
+                size = randint(3, 7)
+            else:
+                colors = ["#8B0000", "#660000", "#CC3333", "#440000", "#992222"]
+                y_start = randint(0, HEIGHT)
+                speed_x = uniform(-0.5, 0.5)
+                speed_y = uniform(-1, -0.3)
+                size = randint(2, 5)
             self.win_particles.append({
                 "x": randint(0, canvas_width),
-                "y": randint(-HEIGHT, 0) if is_win else randint(0, HEIGHT),
-                "speed_x": uniform(-2, 2) if is_win else uniform(-0.5, 0.5),
-                "speed_y": uniform(2, 5) if is_win else uniform(-1, -0.3),
-                "size": randint(3, 7) if is_win else randint(2, 5),
+                "y": y_start,
+                "speed_x": speed_x,
+                "speed_y": speed_y,
+                "size": size,
                 "color": choice(colors),
                 "phase": uniform(0, math.pi * 2),
                 "tag": f"win_p_{randint(0, 99999)}"
@@ -692,9 +736,10 @@ class Board:
             p["y"] += p["speed_y"]
 
             if p["y"] < -30 or p["y"] > HEIGHT + 30:
-                p["y"] = randint(-30, -5) if is_win else HEIGHT + randint(5, 30)
                 p["x"] = randint(0, canvas_width)
-                if not is_win:
+                if is_win:
+                    p["y"] = randint(-30, -5)
+                else:
                     p["y"] = HEIGHT + randint(5, 30)
 
             if 0 <= p["y"] <= HEIGHT:
