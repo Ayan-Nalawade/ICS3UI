@@ -602,11 +602,15 @@ class Board:
                 })
             del self.chests[target]
             self.draw_chests()
-        if pl:
-            who = "player"
-        else:
-            who = "bot"
-        print(f"DEBUG: Moving {who} from {location} to {target}")
+            if pl:
+                print("DEBUG: Player touches chest")
+            else:
+                print("DEBUG: Bot touches chest")
+        # if pl:
+        #     who = "player"
+        # else:
+        #     who = "bot"
+        #print(f"DEBUG: Moving {who} from {location} to {target}")
         return 0
 
     def check_win(self):
