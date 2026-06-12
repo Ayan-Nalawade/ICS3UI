@@ -41,7 +41,7 @@ class Board:
         self.vertical_walls = set()
         self.tick = 0
         self.snakes = []
-        snake_colors = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB"]
+        snake_colors = ["#2E5A3A", "#3D4A2A", "#1A4A4A", "#3A2A4A"]
         for i in range(2):
             self.snakes.append({
                 "x": randint(0, WIDTH + 100),
@@ -419,26 +419,26 @@ class Board:
                     firefly["speed_y"] /= speed
 
             glow = abs(math.sin(self.tick * 0.04 + firefly["phase"]))
-            r = int(180 + 75 * glow)
-            g = int(220 + 35 * glow)
-            b = int(60 + 40 * glow)
+            r = int(40 + 30 * glow)
+            g = int(100 + 40 * glow)
+            b = int(30 + 20 * glow)
             color = f"#{r:02x}{g:02x}{b:02x}"
 
             f.delete(firefly["tag"])
 
             # Outer glow ring
-            glow_size = 4 + int(6 * glow)
+            glow_size = 2 + int(3 * glow)
             f.create_oval(
                 firefly["x"] - glow_size, firefly["y"] - glow_size,
                 firefly["x"] + glow_size, firefly["y"] + glow_size,
                 fill=color, outline="", tags=firefly["tag"]
             )
-            # Bright core
-            core_size = 1 + int(2 * glow)
+            # Core
+            core_size = 1 + int(1 * glow)
             f.create_oval(
                 firefly["x"] - core_size, firefly["y"] - core_size,
                 firefly["x"] + core_size, firefly["y"] + core_size,
-                fill="#FFFFDD", outline="", tags=firefly["tag"]
+                fill="#CCDDAA", outline="", tags=firefly["tag"]
             )
 
             f.tag_raise(firefly["tag"])
@@ -514,7 +514,7 @@ class Board:
                 for i in range(len(snake["history"]) - 1):
                     x1, y1 = snake["history"][i]
                     x2, y2 = snake["history"][i + 1]
-                    w = max(1, 6 - int((i / snake["length"]) * 6))
+                    w = max(1, 3 - int((i / snake["length"]) * 2))
                     f.create_line(x1, y1, x2, y2, fill=snake["color"], width=w,
                                  tags=snake["tags"], capstyle="round")
 
