@@ -58,8 +58,8 @@ class Board:
             self.fireflies.append({
                 "x": uniform(0, WIDTH),
                 "y": uniform(0, HEIGHT),
-                "vx": uniform(-0.4, 0.4),
-                "vy": uniform(-0.4, 0.4),
+                "speed_x": uniform(-0.4, 0.4),
+                "speed_y": uniform(-0.4, 0.4),
                 "phase": uniform(0, math.pi * 2),
                 "tag": f"ff_{randint(0, 99999)}"
             })
@@ -88,6 +88,9 @@ class Board:
         self.chests = {}
         self.vanishing_chests = []
         self._place_chests()
+        self.win_frame = 0
+        self.win_type = None
+        self.win_particles = []
         
     def rightside(self): 
         HEIGHTy = 50
@@ -377,10 +380,10 @@ class Board:
             x = i * (WIDTH // 7) + randint(5, 25)
             y = HEIGHT - randint(3, 12)
             for _ in range(6):
-                dx = randint(-18, 18)
-                dy = randint(-12, 4)
+                x_offset = randint(-18, 18)
+                y_offset = randint(-12, 4)
                 size = randint(7, 15)
-                f.create_oval(x + dx - size, y + dy - size, x + dx + size, y + dy + size,
+                f.create_oval(x + x_offset - size, y + y_offset - size, x + x_offset + size, y + y_offset + size,
                              fill="#1B5E20", outline="#0B3D0B", tags="bg_foliage")
 
         # Push ambient behind everything
@@ -389,29 +392,31 @@ class Board:
 
     def animate_jungle(self):
         if self.won:
+            self._animate_win()
+            f.after(50, self.animate_jungle)
             return
-
+        
         self.tick += 1
 
         # Animate fireflies
         for firefly in self.fireflies:
-            firefly["x"] += firefly["vx"]
-            firefly["y"] += firefly["vy"]
+            firefly["x"] += firefly["speed_x"]
+            firefly["y"] += firefly["speed_y"]
 
             # Bounce off edges
             if firefly["x"] < 0 or firefly["x"] > WIDTH:
-                firefly["vx"] *= -1
+                firefly["speed_x"] *= -1
             if firefly["y"] < 0 or firefly["y"] > HEIGHT:
-                firefly["vy"] *= -1
+                firefly["speed_y"] *= -1
 
             # Random direction change
             if randint(0, 40) == 0:
-                firefly["vx"] += uniform(-0.3, 0.3)
-                firefly["vy"] += uniform(-0.3, 0.3)
-                speed = math.hypot(firefly["vx"], firefly["vy"])
+                firefly["speed_x"] += uniform(-0.3, 0.3)
+                firefly["speed_y"] += uniform(-0.3, 0.3)
+                speed = math.hypot(firefly["speed_x"], firefly["speed_y"])
                 if speed > 1:
-                    firefly["vx"] /= speed
-                    firefly["vy"] /= speed
+                    firefly["speed_x"] /= speed
+                    firefly["speed_y"] /= speed
 
             glow = abs(math.sin(self.tick * 0.04 + firefly["phase"]))
             r = int(180 + 75 * glow)
@@ -585,24 +590,117 @@ class Board:
 
     def check_win(self):
         location = self.__piece_location(self.check_who)
+        if location is None:
+            if not self.won:
+                r.after(50, self.check_win)
+            return
+
         one, two = location[0], location[1]
         if self.check_who:
             self.check_who = False
             if two == "6":
-                f.delete("all")
-                f.create_text((WIDTH+200)//2, HEIGHT//2, text="You Won!",
-                              font=("Helvetica", 48, "bold"), fill="green")
                 self.won = True
+                self.win_frame = 0
+                self.win_type = "player"
+                self._draw_win_screen()
         else:
             self.check_who = True
             if two == "1":
-                f.delete("all")
-                f.create_text((WIDTH+200)//2, HEIGHT//2, text="Bot Won!",
-                              font=("Helvetica", 48, "bold"), fill="red")
                 self.won = True
+                self.win_frame = 0
+                self.win_type = "bot"
+                self._draw_win_screen()
 
         if not self.won:
             r.after(50, self.check_win)
+
+    def _draw_win_screen(self):
+        """Draw the win/lose overlay and start particles."""
+        is_win = self.win_type == "player"
+        canvas_width = WIDTH + 200
+
+        # Dark overlay
+        overlay = "#0A1F05" if is_win else "#1F0505"
+        f.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
+
+        # Large title with shadow
+        title = "VICTORY" if is_win else "DEFEAT"
+        title_color = "#FFD700" if is_win else "#FF3333"
+        shadow_color = "#5C3A00" if is_win else "#5C0000"
+        x1 = canvas_width // 2
+        y1 = HEIGHT // 2 - 30
+
+        f.create_text(x1 + 3, y1 + 3, text=title,
+                      font=("Helvetica", 64, "bold"), fill=shadow_color, tags="win_title_shadow")
+        f.create_text(x1, y1, text=title,
+                      font=("Helvetica", 64, "bold"), fill=title_color, tags="win_title")
+
+        # Subtitle
+        subtitle = "You reached the other side!" if is_win else "The bot beat you!"
+        f.create_text(x1, y1 + 60, text=subtitle,
+                      font=("Helvetica", 20), fill="#CCCCCC", tags="win_subtitle")
+
+        # Particles differ by outcome
+        self.win_particles = []
+        count = 50 if is_win else 30
+        for _ in range(count):
+            colors_win = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB", "#FFD700", "#4CAF50", "#FF9800"]
+            colors_lose = ["#8B0000", "#660000", "#CC3333", "#440000", "#992222"]
+            colors = colors_win if is_win else colors_lose
+            self.win_particles.append({
+                "x": randint(0, canvas_width),
+                "y": randint(-HEIGHT, 0) if is_win else randint(0, HEIGHT),
+                "speed_x": uniform(-2, 2) if is_win else uniform(-0.5, 0.5),
+                "speed_y": uniform(2, 5) if is_win else uniform(-1, -0.3),
+                "size": randint(3, 7) if is_win else randint(2, 5),
+                "color": choice(colors),
+                "phase": uniform(0, math.pi * 2),
+                "tag": f"win_p_{randint(0, 99999)}"
+            })
+
+    def _animate_win(self):
+        """Animate the win/lose screen — pulsing text and particles."""
+        self.win_frame += 1
+        is_win = self.win_type == "player"
+        canvas_width = WIDTH + 200
+        x1 = canvas_width // 2
+        y1 = HEIGHT // 2 - 30
+
+        # Pulsing title glow
+        f.delete("win_glow")
+        pulse = abs(math.sin(self.win_frame * 0.06))
+        glow_radius = 40 + int(30 * pulse)
+        intensity = int(60 * pulse)
+        if is_win:
+            glow_color = f"#{intensity:02x}{int(intensity*0.85):02x}00"
+        else:
+            glow_color = f"#{intensity:02x}0000"
+        f.create_oval(x1 - glow_radius, y1 - glow_radius,
+                      x1 + glow_radius, y1 + glow_radius,
+                      fill=glow_color, outline="", tags="win_glow")
+        f.tag_lower("win_glow", "win_title_shadow")
+
+        # Subtle title bounce
+        bounce = int(math.sin(self.win_frame * 0.08) * 3)
+        f.coords("win_title", x1, y1 + bounce)
+        f.coords("win_title_shadow", x1 + 3, y1 + bounce + 3)
+
+        # Animate particles
+        for p in self.win_particles[:]:
+            f.delete(p["tag"])
+            p["x"] += p["speed_x"] + math.sin(self.win_frame * 0.04 + p["phase"]) * 0.3
+            p["y"] += p["speed_y"]
+
+            if p["y"] < -30 or p["y"] > HEIGHT + 30:
+                p["y"] = randint(-30, -5) if is_win else HEIGHT + randint(5, 30)
+                p["x"] = randint(0, canvas_width)
+                if not is_win:
+                    p["y"] = HEIGHT + randint(5, 30)
+
+            if 0 <= p["y"] <= HEIGHT:
+                f.create_oval(p["x"] - p["size"], p["y"] - p["size"],
+                              p["x"] + p["size"], p["y"] + p["size"],
+                              fill=p["color"], outline="", tags=p["tag"])
 
     def bot(self):
         if self.won:
