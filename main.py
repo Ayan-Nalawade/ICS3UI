@@ -86,6 +86,7 @@ class Board:
             "open":   load_sprite("chest-open.png"),
         }
         self.chests = {}
+        self.vanishing_chests = []
         self._place_chests()
         
     def rightside(self): 
@@ -437,6 +438,44 @@ class Board:
 
             f.tag_raise(firefly["tag"])
 
+        # Animate vanishing chests
+        for vc in self.vanishing_chests[:]:
+            vc["frame"] += 1
+            tag = f"vanish_{vc['square']}"
+            f.delete(tag)
+
+            if vc["frame"] >= vc["max_frames"]:
+                self.vanishing_chests.remove(vc)
+                continue
+
+            t = vc["frame"] / vc["max_frames"]
+            x1, y1 = vc["x"], vc["y"]
+
+            # Expanding golden glow that fades out
+            radius = 5 + t * 28
+            r = int(255 * (1 - t))
+            g = int(220 * (1 - t))
+            b = int(50 * (1 - t))
+            glow_color = f"#{r:02x}{g:02x}{b:02x}"
+            f.create_oval(x1 - radius, y1 - radius, x1 + radius, y1 + radius,
+                          fill=glow_color, outline="", tags=tag)
+
+            # Sparkle particles flying outward
+            for i in range(10):
+                angle = i * math.pi / 5 + t * 3
+                dist = 5 + t * 35
+                x2 = x1 + math.cos(angle) * dist
+                y2 = y1 + math.sin(angle) * dist
+                size = max(1, 5 - int(t * 5))
+                r = int(255 * (1 - t))
+                g = int(255 * (1 - t))
+                b = int(200 * (1 - t))
+                color = f"#{r:02x}{g:02x}{b:02x}"
+                f.create_oval(x2 - size, y2 - size, x2 + size, y2 + size,
+                              fill=color, outline="", tags=tag)
+
+            f.tag_raise(tag)
+
         # Animate snakes (original logic preserved)
         for snake in self.snakes:
             if randint(0, 15) == 0:
@@ -528,9 +567,18 @@ class Board:
             return 1
 
         self.draw_player(pl, location, target, direction)
-        # Open chest if stepping onto one
+        # Vanishing chest if stepping onto one
         if target in self.chests and self.chests[target] == "closed":
-            self.chests[target] = "open"
+            data = self.board_data.get(target)
+            if data:
+                x, y, _ = data
+                self.vanishing_chests.append({
+                    "x": x, "y": y,
+                    "square": target,
+                    "frame": 0,
+                    "max_frames": 10
+                })
+            del self.chests[target]
             self.draw_chests()
         print(f"DEBUG: Moving {'player' if pl else 'bot'} from {location} to {target}")
         return 0
