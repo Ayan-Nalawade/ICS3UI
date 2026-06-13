@@ -294,8 +294,20 @@ def pick_action_blocker(state, verbose=True):
     best_score = -999999
 
     for move in moves:
-        next_state = state.apply(move)
-        score = _evaluate_state(next_state)
+        after_bot = state.apply(move)
+        player_moves = after_bot.legal_moves(nearby_only=True)
+
+        if not player_moves:
+            score = _evaluate_state(after_bot) + 500
+        else:
+            worst_for_bot = 999999
+            for pmove in player_moves:
+                after_player = after_bot.apply(pmove)
+                s = _evaluate_state(after_player)
+                if s < worst_for_bot:
+                    worst_for_bot = s
+            score = worst_for_bot
+
         if score > best_score:
             best_score = score
             best_move = move
