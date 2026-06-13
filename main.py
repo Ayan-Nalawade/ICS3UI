@@ -257,24 +257,30 @@ def _evaluate_state(state):
     """Score a game state from the bot's perspective. Higher is better."""
     score = 0
 
-    bot_progress = 5 - state.b_row
-    player_progress = state.p_row
-    score += bot_progress * 10
-    score -= player_progress * 10
-
     bot_path = _bfs_path(state, is_bot=True)
-    if bot_path:
-        score += 15 - len(bot_path)
-    else:
-        score -= 50
-
     player_path = _bfs_path(state, is_bot=False)
-    if player_path:
-        score -= 25 - len(player_path)
-    else:
-        score += 50
 
-    score += state.b_sticks * 5
+    if bot_path and player_path:
+        score += (len(player_path) - len(bot_path)) * 15
+
+    if not player_path:
+        score += 200
+
+    if not bot_path:
+        score -= 300
+
+    if player_path and len(player_path) > 1:
+        next_col, next_row = player_path[1]
+        if next_col != state.p_col or next_row != state.p_row:
+            if (state.p_col, state.p_row) in state.h_walls:
+                score += 10
+            if (next_col, next_row) in state.h_walls and next_row == state.p_row + 1:
+                score += 10
+            dcol = next_col - state.p_col
+            if dcol == 1 and (state.p_col, state.p_row) in state.v_walls:
+                score += 10
+            if dcol == -1 and (next_col, state.p_row) in state.v_walls:
+                score += 10
 
     return score
 
