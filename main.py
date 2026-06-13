@@ -1,13 +1,380 @@
 import tkinter as tk
-from random import randint, choice, uniform
+import random
+import sys
 import math
+from random import randint, choice, uniform
 from PIL import Image, ImageTk
-import bot_ml
+import numpy as np
+from collections import deque
 
-r = tk.Tk()
 
-WIDTH = r.winfo_screenwidth()
-HEIGHT = r.winfo_screenheight()
+class GameState:
+    """Minimal game state for simulation."""
+
+    __slots__ = (
+        "p_col", "p_row", "b_col", "b_row",
+        "h_walls", "v_walls", "p_sticks", "b_sticks", "to_move",
+    )
+
+    def __init__(self):
+        self.p_col = 2
+        self.p_row = 0
+        self.b_col = 3
+        self.b_row = 5
+        self.h_walls = set()
+        self.v_walls = set()
+        self.p_sticks = 4
+        self.b_sticks = 4
+        self.to_move = True
+
+    def copy(self):
+        s = GameState()
+        s.p_col, s.p_row = self.p_col, self.p_row
+        s.b_col, s.b_row = self.b_col, self.b_row
+        s.h_walls = set(self.h_walls)
+        s.v_walls = set(self.v_walls)
+        s.p_sticks, s.b_sticks = self.p_sticks, self.b_sticks
+        s.to_move = self.to_move
+        return s
+
+    def is_terminal(self):
+        if self.p_row == 5 or self.b_row == 0:
+            return True
+        return len(self.legal_moves(nearby_only=True)) == 0
+
+    def result(self):
+        if self.b_row == 0:
+            return 1.0
+        if self.p_row == 5:
+            return -1.0
+        if not self.legal_moves(nearby_only=True):
+            if self.to_move:
+                return -1.0
+            else:
+                return 1.0
+        return 0.0
+
+    def _occupied(self, col, row):
+        return (col == self.p_col and row == self.p_row) or (
+            col == self.b_col and row == self.b_row
+        )
+
+    def legal_moves(self, nearby_only=False):
+        moves = []
+        is_bot = self.to_move
+        if is_bot:
+            col = self.b_col
+            row = self.b_row
+            sticks = self.b_sticks
+        else:
+            col = self.p_col
+            row = self.p_row
+            sticks = self.p_sticks
+
+        if (
+            row < 5
+            and (col, row) not in self.h_walls
+            and not self._occupied(col, row + 1)
+        ):
+            moves.append(("up",))
+        if (
+            row > 0
+            and (col, row - 1) not in self.h_walls
+            and not self._occupied(col, row - 1)
+        ):
+            moves.append(("down",))
+        if (
+            col > 0
+            and (col - 1, row) not in self.v_walls
+            and not self._occupied(col - 1, row)
+        ):
+            moves.append(("left",))
+        if (
+            col < 5
+            and (col, row) not in self.v_walls
+            and not self._occupied(col + 1, row)
+        ):
+            moves.append(("right",))
+
+        if sticks > 0:
+            if nearby_only:
+                player_row, player_col = self.p_row, self.p_col
+                bot_row, bot_col = self.b_row, self.b_col
+                seen = set()
+                for row, col in [(player_row, player_col), (bot_row, bot_col)]:
+                    for drow in range(-2, 3):
+                        for dcol in range(-2, 3):
+                            wall_row = row + drow
+                            wall_col = col + dcol
+                            if 0 <= wall_col < 6 and 0 <= wall_row < 5:
+                                key = ("h", wall_col, wall_row)
+                                if key not in seen and (wall_col, wall_row) not in self.h_walls:
+                                    seen.add(key)
+                                    moves.append(("h_wall", wall_col, wall_row))
+                            if 0 <= wall_col < 5 and 0 <= wall_row < 6:
+                                key = ("v", wall_col, wall_row)
+                                if key not in seen and (wall_col, wall_row) not in self.v_walls:
+                                    seen.add(key)
+                                    moves.append(("v_wall", wall_col, wall_row))
+            else:
+                for wall_col in range(6):
+                    for wall_row in range(5):
+                        if (wall_col, wall_row) not in self.h_walls:
+                            moves.append(("h_wall", wall_col, wall_row))
+                for wall_col in range(5):
+                    for wall_row in range(6):
+                        if (wall_col, wall_row) not in self.v_walls:
+                            moves.append(("v_wall", wall_col, wall_row))
+
+        random.shuffle(moves)
+        return moves
+
+    def apply(self, move):
+        s = self.copy()
+        kind = move[0]
+
+        if kind == "up":
+            if s.to_move:
+                s.b_row += 1
+            else:
+                s.p_row += 1
+        elif kind == "down":
+            if s.to_move:
+                s.b_row -= 1
+            else:
+                s.p_row -= 1
+        elif kind == "left":
+            if s.to_move:
+                s.b_col -= 1
+            else:
+                s.p_col -= 1
+        elif kind == "right":
+            if s.to_move:
+                s.b_col += 1
+            else:
+                s.p_col += 1
+        elif kind == "h_wall":
+            _, wall_col, wall_row = move
+            s.h_walls.add((wall_col, wall_row))
+            if s.to_move:
+                s.b_sticks -= 1
+            else:
+                s.p_sticks -= 1
+        elif kind == "v_wall":
+            _, wall_col, wall_row = move
+            s.v_walls.add((wall_col, wall_row))
+            if s.to_move:
+                s.b_sticks -= 1
+            else:
+                s.p_sticks -= 1
+
+        s.to_move = not s.to_move
+        return s
+
+    def encode(self):
+        f = np.zeros(134, dtype=np.float32)
+        idx = 0
+        f[self.p_col * 6 + self.p_row] = 1.0
+        idx += 36
+        f[idx + self.b_col * 6 + self.b_row] = 1.0
+        idx += 36
+        for wall_col in range(6):
+            for wall_row in range(5):
+                if (wall_col, wall_row) in self.h_walls:
+                    f[idx] = 1.0
+                idx += 1
+        for wall_col in range(5):
+            for wall_row in range(6):
+                if (wall_col, wall_row) in self.v_walls:
+                    f[idx] = 1.0
+                idx += 1
+        f[idx] = self.p_sticks / 4.0
+        idx += 1
+        f[idx] = self.b_sticks / 4.0
+        return f
+
+
+def _bfs_path(state, is_bot):
+    if is_bot:
+        start = (state.b_col, state.b_row)
+        goal_row = 0
+    else:
+        start = (state.p_col, state.p_row)
+        goal_row = 5
+
+    visited = {start}
+    queue = deque()
+    queue.append((start, [start]))
+
+    while queue:
+        (col, row), path = queue.popleft()
+        if row == goal_row:
+            return path
+
+        for drow, dcol in [(1, 0), (-1, 0), (0, -1), (0, 1)]:
+            next_col, next_row = col + dcol, row + drow
+            if next_col < 0 or next_col > 5 or next_row < 0 or next_row > 5:
+                continue
+            if (next_col, next_row) in visited:
+                continue
+            if state._occupied(next_col, next_row):
+                continue
+            if drow == 1 and (col, row) in state.h_walls:
+                continue
+            if drow == -1 and (col, row - 1) in state.h_walls:
+                continue
+            if dcol == -1 and (col - 1, row) in state.v_walls:
+                continue
+            if dcol == 1 and (col, row) in state.v_walls:
+                continue
+            visited.add((next_col, next_row))
+            queue.append(((next_col, next_row), path + [(next_col, next_row)]))
+
+    return None
+
+
+def _move_toward_goal(state):
+    is_bot = state.to_move
+    path = _bfs_path(state, is_bot)
+    if path is None or len(path) < 2:
+        return None
+
+    col, row = path[0]
+    next_col, next_row = path[1]
+    dcol, drow = next_col - col, next_row - row
+
+    if drow == 1:
+        return ("up",)
+    if drow == -1:
+        return ("down",)
+    if dcol == -1:
+        return ("left",)
+    if dcol == 1:
+        return ("right",)
+    return None
+
+
+def _format_move(move):
+    kind = move[0]
+    if kind in ("up", "down", "left", "right"):
+        return kind
+    if kind == "h_wall":
+        col = chr(ord("A") + move[1])
+        row = move[2] + 1
+        return f"h_wall {col}{row}-{col}{row+1}"
+    if kind == "v_wall":
+        col = chr(ord("A") + move[1])
+        col2 = chr(ord("A") + move[1] + 1)
+        row = move[2] + 1
+        return f"v_wall {col}{row}-{col2}{row}"
+    return str(move)
+
+
+def _format_position(col, row):
+    return f"{chr(ord('A') + col)}{row + 1}"
+
+
+def _heuristic_opponent_move(state, block_chance=0.4):
+    if state.p_sticks > 0 and random.random() < block_chance:
+        bot_path = _bfs_path(state, is_bot=True)
+        if bot_path and len(bot_path) >= 3:
+            candidates = []
+            for i in range(1, len(bot_path) - 1):
+                col, row = bot_path[i - 1]
+                next_col, next_row = bot_path[i]
+                dcol, drow = next_col - col, next_row - row
+                if drow == 1 and (col, row) not in state.h_walls:
+                    candidates.append(("h_wall", col, row))
+                elif drow == -1:
+                    wall_row = row - 1
+                    if 0 <= wall_row < 5 and (col, wall_row) not in state.h_walls:
+                        candidates.append(("h_wall", col, wall_row))
+                elif dcol == -1:
+                    wall_col = col - 1
+                    if 0 <= wall_col < 5 and (wall_col, row) not in state.v_walls:
+                        candidates.append(("v_wall", wall_col, row))
+                elif dcol == 1 and (col, row) not in state.v_walls:
+                    candidates.append(("v_wall", col, row))
+            if candidates:
+                wall = random.choice(candidates)
+                if wall in state.legal_moves(nearby_only=False):
+                    return wall
+
+    opp_path = _bfs_path(state, is_bot=False)
+    if opp_path and len(opp_path) >= 2:
+        col, row = opp_path[0]
+        next_col, next_row = opp_path[1]
+        dcol, drow = next_col - col, next_row - row
+        if drow == 1:
+            move = ("up",)
+        elif drow == -1:
+            move = ("down",)
+        elif dcol == -1:
+            move = ("left",)
+        elif dcol == 1:
+            move = ("right",)
+        else:
+            move = None
+        if move is not None and move in state.legal_moves(nearby_only=False):
+            return move
+
+    moves = state.legal_moves(nearby_only=True)
+    if moves:
+        return random.choice(moves)
+    return None
+
+
+def _block_opponent_path(state):
+    opp_path = _bfs_path(state, is_bot=False)
+    if opp_path and len(opp_path) >= 3:
+        for i in range(1, len(opp_path) - 1):
+            col, row = opp_path[i - 1]
+            next_col, next_row = opp_path[i]
+            dcol, drow = next_col - col, next_row - row
+            if drow == 1 and (col, row) not in state.h_walls and state.b_sticks > 0:
+                return ("h_wall", col, row)
+            if drow == -1:
+                wall_row = row - 1
+                if 0 <= wall_row < 5 and (col, wall_row) not in state.h_walls and state.b_sticks > 0:
+                    return ("h_wall", col, wall_row)
+            if dcol == -1:
+                wall_col = col - 1
+                if 0 <= wall_col < 5 and (wall_col, row) not in state.v_walls and state.b_sticks > 0:
+                    return ("v_wall", wall_col, row)
+            if dcol == 1 and (col, row) not in state.v_walls and state.b_sticks > 0:
+                return ("v_wall", col, row)
+    return None
+
+
+def pick_action_blocker(state, verbose=False):
+    if state.b_sticks > 0:
+        wall = _block_opponent_path(state)
+        if wall is not None:
+            if verbose:
+                print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
+                      f"blocking opp with {_format_move(wall)}")
+            return wall
+
+    bfs = _move_toward_goal(state)
+    if bfs is not None:
+        if verbose:
+            print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
+                  f"moving with {_format_move(bfs)}")
+        return bfs
+
+    moves = state.legal_moves(nearby_only=True)
+    if verbose:
+        print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
+              f"fallback ({len(moves)} moves)")
+    if moves:
+        return random.choice(moves)
+    return None
+
+
+root = tk.Tk()
+
+WIDTH = root.winfo_screenwidth()
+HEIGHT = root.winfo_screenheight()
 if WIDTH > 1000: 
     WIDTH = 1000
 if HEIGHT > 1000: 
@@ -20,8 +387,8 @@ if HEIGHT < 300:
     print("Please resize HEIGHT")
 
 
-f = tk.Canvas(r, width=WIDTH, height=HEIGHT, background="#0B1F05")
-f.pack()
+canvas = tk.Canvas(root, width=WIDTH, height=HEIGHT, background="#0B1F05")
+canvas.pack()
 
 WIDTH -= 200
 
@@ -29,12 +396,12 @@ SPRITE_SIZE = 64
 
 class Board:
     def __init__(self):
-        self.sqh = HEIGHT // 6
-        self.sqw = WIDTH // 6
+        self.square_height = HEIGHT // 6
+        self.square_width = WIDTH // 6
         self.board_data = {}
         self.check_who = True
         self.won = False
-        self.pl_last_dir = "down"
+        self.player_last_dir = "down"
         self.bot_last_dir = "down"
         self.sticks_left = 4
         self.bot_sticks_left = 4
@@ -44,11 +411,17 @@ class Board:
         self.snakes = []
         snake_colors = ["#2E5A3A", "#3D4A2A", "#1A4A4A", "#3A2A4A"]
         for i in range(2):
+            speed_x = randint(-3, 3)
+            if speed_x == 0:
+                speed_x = 2
+            speed_y = randint(-3, 3)
+            if speed_y == 0:
+                speed_y = -2
             self.snakes.append({
                 "x": randint(0, WIDTH + 100),
                 "y": randint(0, HEIGHT),
-                "x_speed": randint(-3, 3) or 2,
-                "y_speed": randint(-3, 3) or -2,
+                "x_speed": speed_x,
+                "y_speed": speed_y,
                 "length": randint(15, 25),
                 "color": snake_colors[i],
                 "tags": f"snake_{i}",
@@ -70,7 +443,7 @@ class Board:
             img = img.resize((SPRITE_SIZE, SPRITE_SIZE), Image.LANCZOS)
             return ImageTk.PhotoImage(img)
 
-        self.pl_sprites = {
+        self.player_sprites = {
             "up":    load_sprite("Back.png"),
             "down":  load_sprite("Front.png"),
             "left":  load_sprite("Left.png"),
@@ -94,90 +467,88 @@ class Board:
         self.win_frame = 0
         self.win_type = None
         self.win_particles = []
-        self.bot_move_log = ""  # latest move description shown on screen
+        self.bot_move_log = ""
         
     def rightside(self): 
-        HEIGHTy = 50
-        WIDTHx = WIDTH
-        WIDTHx2 = WIDTH + 200
+        panel_top = 50
+        panel_left = WIDTH
+        panel_right = WIDTH + 200
         
-        ptxtx = WIDTHx + 100
-        ptxty = HEIGHTy + 25
-        f.create_text(ptxtx, ptxty, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup", fill="#4CAF50")
+        panel_center_x = panel_left + 100
+        panel_center_y = panel_top + 25
+        canvas.create_text(panel_center_x, panel_center_y, text="Power-Ups", font=("Helvetica", 20, "underline", "bold"), tags="powerup", fill="#4CAF50")
         
-        f.create_text(ptxtx, ptxty + 80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt", fill="white")
+        canvas.create_text(panel_center_x, panel_center_y + 80, text="Bot:", font=("Helvetica", 16, "bold"), tags="bottxt", fill="white")
         rect_size = 30
         rect_spacing = 15
         for i in range(3):
-            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
-            f.create_rectangle(x_offset, ptxty + 100, x_offset + rect_size, ptxty + 130, outline="#111", fill="#795548", tags=f"bot_rect{i}")
+            x_offset = panel_center_x - 45 + i * (rect_size + rect_spacing)
+            canvas.create_rectangle(x_offset, panel_center_y + 100, x_offset + rect_size, panel_center_y + 130, outline="#111", fill="#795548", tags=f"bot_rect{i}")
         
-        f.create_text(ptxtx, ptxty + 170, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt", fill="white")
+        canvas.create_text(panel_center_x, panel_center_y + 170, text="Player:", font=("Helvetica", 16, "bold"), tags="playertxt", fill="white")
         for i in range(3):
-            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
-            f.create_rectangle(x_offset, ptxty + 200, x_offset + rect_size, ptxty + 230, outline="#111", fill="#795548", tags=f"player_rect{i}")
+            x_offset = panel_center_x - 45 + i * (rect_size + rect_spacing)
+            canvas.create_rectangle(x_offset, panel_center_y + 200, x_offset + rect_size, panel_center_y + 230, outline="#111", fill="#795548", tags=f"player_rect{i}")
 
-        f.create_text(ptxtx - 90, ptxty + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
-        f.create_text(ptxtx + 75, ptxty + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
+        canvas.create_text(panel_center_x - 90, panel_center_y + 270, text="Sticks Left:", font=("Helvetica", 16, "bold"), anchor="w", tags="stickstxt", fill="white")
+        canvas.create_text(panel_center_x + 75, panel_center_y + 270, text=str(self.sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="sticksval", fill="#FFEB3B")
 
-        f.create_text(ptxtx - 90, ptxty + 310, text="Bot Sticks:", font=("Helvetica", 16, "bold"), anchor="w", tags="botstickstxt", fill="white")
-        f.create_text(ptxtx + 75, ptxty + 310, text=str(self.bot_sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="botsticksval", fill="#FF9800")
+        canvas.create_text(panel_center_x - 90, panel_center_y + 310, text="Bot Sticks:", font=("Helvetica", 16, "bold"), anchor="w", tags="botstickstxt", fill="white")
+        canvas.create_text(panel_center_x + 75, panel_center_y + 310, text=str(self.bot_sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="botsticksval", fill="#FF9800")
 
-        # Instructions
-        f.create_text(ptxtx, ptxty + 370, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
-        f.create_text(ptxtx, ptxty + 440, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
+        canvas.create_text(panel_center_x, panel_center_y + 370, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
+        canvas.create_text(panel_center_x, panel_center_y + 440, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
                       font=("Helvetica", 12), tags="instructions", fill="#CCE5CC", width=170)
 
         self._draw_powerups()
 
-    def __piece_location(self, pl: bool):
+    def __piece_location(self, is_player: bool):
         for square, (_, _, occupant) in self.board_data.items():
-            if occupant == pl:
+            if occupant == is_player:
                 return square
         return None
 
     def __progression(self, character) -> str:
         if character == "None":
             return "None"
-        one, two = character[0], character[1]
-        one = ord(one)
-        if one == 70:
-            if two == "1":
+        column_letter, row_digit = character[0], character[1]
+        column_letter = ord(column_letter)
+        if column_letter == 70:
+            if row_digit == "1":
                 return "None"
-            return f"A{int(two)-1}"
-        return f"{chr(one+1)}{two}"
+            return f"A{int(row_digit)-1}"
+        return f"{chr(column_letter+1)}{row_digit}"
 
-    def draw_player(self, pl: bool, current: str, target: str, direction: str = None):
+    def draw_player(self, is_player: bool, current: str, target: str, direction: str = None):
         x, y, _ = self.board_data[current]
         x2, y2, _ = self.board_data[target]
 
-        if pl:
+        if is_player:
             if direction:
-                self.pl_last_dir = direction
-            sprite = self.pl_sprites[self.pl_last_dir]
-            f.delete("pl")
-            f.create_image(x2, y2, image=sprite, anchor="center", tags="pl")
+                self.player_last_dir = direction
+            sprite = self.player_sprites[self.player_last_dir]
+            canvas.delete("pl")
+            canvas.create_image(x2, y2, image=sprite, anchor="center", tags="pl")
         else:
             if direction:
                 self.bot_last_dir = direction
             sprite = self.bot_sprites[self.bot_last_dir]
-            f.delete("bot")
-            f.create_image(x2, y2, image=sprite, anchor="center", tags="bot")
+            canvas.delete("bot")
+            canvas.create_image(x2, y2, image=sprite, anchor="center", tags="bot")
 
         self.board_data[current] = (x, y, None)
-        self.board_data[target] = (x2, y2, pl)
+        self.board_data[target] = (x2, y2, is_player)
 
     def show_notation(self):
         start = "A6"
         for _ in range(6):
             for _ in range(6):
                 x, y, _ = self.board_data.get(start)
-                f.create_text(x, y, text=start, fill="#8BC34A",
+                canvas.create_text(x, y, text=start, fill="#8BC34A",
                               font=("Helvetica", 20, "bold"), tags="notation")
                 start = self.__progression(start)
 
     def _place_chests(self):
-        """Randomly place closed chests on the board, avoiding starting squares."""
         available = []
         for col in ["A", "B", "C", "D", "E", "F"]:
             for row in range(1, 7):
@@ -190,61 +561,56 @@ class Board:
             self.chests[square] = "closed"
 
     def draw_chests(self):
-        """Draw all chests on the board, behind players."""
-        f.delete("chest")
+        canvas.delete("chest")
         for square, state in self.chests.items():
             data = self.board_data.get(square)
             if data:
                 x, y, _ = data
                 sprite = self.chest_sprites[state]
-                f.create_image(x, y, image=sprite, anchor="center", tags="chest")
-        if f.find_withtag("pl"):
-            f.tag_lower("chest", "pl")
-        if f.find_withtag("bot"):
-            f.tag_lower("chest", "bot")
+                canvas.create_image(x, y, image=sprite, anchor="center", tags="chest")
+        if canvas.find_withtag("pl"):
+            canvas.tag_lower("chest", "pl")
+        if canvas.find_withtag("bot"):
+            canvas.tag_lower("chest", "bot")
 
     def _draw_powerups(self):
-        """Draw power-up indicators in the right panel slots."""
-        f.delete("pu_indicator")
-        ptxtx = WIDTH + 100
-        ptxty = 75
+        canvas.delete("pu_indicator")
+        panel_center_x = WIDTH + 100
+        panel_center_y = 75
         rect_size = 30
         rect_spacing = 15
 
-        # Bot power-ups
-        for i, pu in enumerate(self.bot_powerups[:3]):
-            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+        for i, powerup in enumerate(self.bot_powerups[:3]):
+            x_offset = panel_center_x - 45 + i * (rect_size + rect_spacing)
             center_x = x_offset + rect_size // 2
-            center_y = ptxty + 100 + rect_size // 2
-            if pu == "extra_stick":
-                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+            center_y = panel_center_y + 100 + rect_size // 2
+            if powerup == "extra_stick":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
                              fill="#4CAF50", outline="", tags="pu_indicator")
-                f.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
+                canvas.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
-            elif pu == "erase_stick":
-                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+            elif powerup == "erase_stick":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
                              fill="#F44336", outline="", tags="pu_indicator")
-                f.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
+                canvas.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
 
-        # Player power-ups
-        for i, pu in enumerate(self.player_powerups[:3]):
-            x_offset = ptxtx - 45 + i * (rect_size + rect_spacing)
+        for i, powerup in enumerate(self.player_powerups[:3]):
+            x_offset = panel_center_x - 45 + i * (rect_size + rect_spacing)
             center_x = x_offset + rect_size // 2
-            center_y = ptxty + 200 + rect_size // 2
-            if pu == "extra_stick":
-                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+            center_y = panel_center_y + 200 + rect_size // 2
+            if powerup == "extra_stick":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
                              fill="#4CAF50", outline="", tags="pu_indicator")
-                f.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
+                canvas.create_text(center_x, center_y, text="+", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
-            elif pu == "erase_stick":
-                f.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+            elif powerup == "erase_stick":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
                              fill="#F44336", outline="", tags="pu_indicator")
-                f.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
+                canvas.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
 
     def _award_powerup(self, is_player):
-        """Award a random power-up when a chest is touched."""
         powerup = choice(["extra_stick", "erase_stick"])
 
         if is_player:
@@ -254,7 +620,7 @@ class Board:
             elif powerup == "erase_stick":
                 self.horizontal_walls.clear()
                 self.vertical_walls.clear()
-                f.delete("wall")
+                canvas.delete("wall")
         else:
             self.bot_powerups.append(powerup)
             if powerup == "extra_stick":
@@ -262,61 +628,56 @@ class Board:
             elif powerup == "erase_stick":
                 self.horizontal_walls.clear()
                 self.vertical_walls.clear()
-                f.delete("wall")
+                canvas.delete("wall")
 
         self._draw_powerups()
-        f.itemconfigure("sticksval", text=str(self.sticks_left))
-        f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+        canvas.itemconfigure("sticksval", text=str(self.sticks_left))
+        canvas.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
-        """Draw a realistic leaf shape polygon."""
         angle_rad = math.radians(angle)
         half_width = size * 0.35
-        pts = []
+        points = []
         for t_rel in range(0, 181, 12):
             t = t_rel / 180
             along = -size + t * size * 2
             width = half_width * math.sin(t * math.pi)
             x = x1 + along * math.cos(angle_rad) - width * math.sin(angle_rad)
             y = y1 + along * math.sin(angle_rad) + width * math.cos(angle_rad)
-            pts.append(x)
-            pts.append(y)
-        f.create_polygon(*pts, fill=color, outline=outline_color, width=1,
+            points.append(x)
+            points.append(y)
+        canvas.create_polygon(*points, fill=color, outline=outline_color, width=1,
                         smooth=True, tags=tag)
-        # Center vein
         x2 = x1 + size * 0.7 * math.cos(angle_rad)
         y2 = y1 + size * 0.7 * math.sin(angle_rad)
-        f.create_line(x1, y1, x2, y2, fill=outline_color, width=1, tags=tag)
+        canvas.create_line(x1, y1, x2, y2, fill=outline_color, width=1, tags=tag)
 
     def _draw_leaf_cluster(self, x1, y1, vine_angle):
-        """Draw leaves sprouting from a vine node."""
         colors = ["#1B5E20", "#2E7D32", "#388E3C", "#43A047"]
         for i in range(randint(2, 4)):
-            off = randint(-50, 50)
-            sz = randint(7, 13)
+            offset = randint(-50, 50)
+            size = randint(7, 13)
             self._draw_leaf_shape(
                 x1 + randint(-3, 3), y1 + randint(-3, 3),
-                vine_angle + off, sz, choice(colors), "#0B3D0B"
+                vine_angle + offset, size, choice(colors), "#0B3D0B"
             )
 
     def _draw_tendril(self, x1, y1, angle, length):
-        """Draw a curly vine tendril."""
-        pts = []
+        points = []
         x, y = x1, y1
         for i in range(24):
             t = i / 24
             angle2 = angle + math.sin(t * math.pi * 5) * 40
             x += math.cos(math.radians(angle2)) * length / 24
             y += math.sin(math.radians(angle2)) * length / 24
-            pts.extend([x, y])
-        f.create_line(*pts, fill="#4CAF50", width=1, smooth=True, tags="wall")
+            points.extend([x, y])
+        canvas.create_line(*points, fill="#4CAF50", width=1, smooth=True, tags="wall")
 
     def draw_vine(self, x1, y1, x2, y2, color):
-        """Draw a realistic organic vine with leaves and tendrils."""
         segments = 14
         horiz = y1 == y2
 
-        pts = []
+        points = []
         for i in range(segments + 1):
             t = i / segments
             x = x1 + (x2 - x1) * t
@@ -327,35 +688,31 @@ class Board:
                     y += wiggle
                 else:
                     x += wiggle
-            pts.extend([x, y])
+            points.extend([x, y])
 
-        # Three layers for depth: dark shadow, main body, highlight
-        f.create_line(*pts, fill="#0B3D0B", width=7, smooth=True, tags="wall", capstyle="round")
-        f.create_line(*pts, fill=color, width=5, smooth=True, tags="wall", capstyle="round")
-        f.create_line(*pts, fill="#66BB6A", width=2, smooth=True, tags="wall", capstyle="round")
+        canvas.create_line(*points, fill="#0B3D0B", width=7, smooth=True, tags="wall", capstyle="round")
+        canvas.create_line(*points, fill=color, width=5, smooth=True, tags="wall", capstyle="round")
+        canvas.create_line(*points, fill="#66BB6A", width=2, smooth=True, tags="wall", capstyle="round")
 
-        # Leaves along the vine
         if horiz:
             vine_angle = 0
         else:
             vine_angle = 90
         for i in range(2, segments, 3):
-            x, y = pts[i * 2], pts[i * 2 + 1]
+            x, y = points[i * 2], points[i * 2 + 1]
             if i % 2 == 0:
                 side = 90
             else:
                 side = -90
             self._draw_leaf_cluster(x, y, vine_angle + side)
 
-        # Occasional tendril
         if randint(0, 2) == 0:
             idx = randint(2, segments - 2)
-            x, y = pts[idx * 2], pts[idx * 2 + 1]
+            x, y = points[idx * 2], points[idx * 2 + 1]
             self._draw_tendril(x, y, vine_angle + choice([-60, 60]), randint(15, 25))
 
     def _draw_grass_blade(self, x, y, height, lean):
-        """Draw a single curved grass blade."""
-        f.create_line(
+        canvas.create_line(
             x, y,
             x + lean * 0.3, y - height * 0.6,
             x + lean, y - height,
@@ -363,83 +720,76 @@ class Board:
             width=1, smooth=True, tags="tile_detail"
         )
 
-    def _draw_tile_texture(self, x, y, sqw, sqh, dark_shade):
-        """Add grass, dirt, and moss detail to a single tile."""
-        # Random dirt/moss patches
+    def _draw_tile_texture(self, x, y, square_width, square_height, dark_shade):
         for _ in range(randint(2, 4)):
-            x1 = x + randint(6, sqw - 6)
-            y1 = y + randint(6, sqh - 6)
-            r2 = randint(3, 7)
-            f.create_oval(x1 - r2, y1 - r2, x1 + r2, y1 + r2,
+            x1 = x + randint(6, square_width - 6)
+            y1 = y + randint(6, square_height - 6)
+            radius = randint(3, 7)
+            canvas.create_oval(x1 - radius, y1 - radius, x1 + radius, y1 + radius,
                          fill=dark_shade, outline="", tags="tile_detail")
 
-        # Grass blades
         for _ in range(randint(4, 7)):
-            x1 = x + randint(4, sqw - 4)
-            y1 = y + sqh - randint(2, 5)
+            x1 = x + randint(4, square_width - 4)
+            y1 = y + square_height - randint(2, 5)
             h = randint(5, 12)
             lean = randint(-4, 4)
             self._draw_grass_blade(x1, y1, h, lean)
 
-        # Tiny lighter speckles (decomposition highlights)
         for _ in range(randint(1, 3)):
-            x1 = x + randint(8, sqw - 8)
-            y1 = y + randint(8, sqh - 8)
-            f.create_oval(x1 - 1, y1 - 1, x1 + 1, y1 + 1,
+            x1 = x + randint(8, square_width - 8)
+            y1 = y + randint(8, square_height - 8)
+            canvas.create_oval(x1 - 1, y1 - 1, x1 + 1, y1 + 1,
                          fill="#8BC34A", outline="", tags="tile_detail")
 
     def draw_board(self):
-        """Draw the board with realistic jungle floor tiles."""
-        # Dark mossy border around the whole board
         pad = 5
-        f.create_rectangle(-pad, -pad, WIDTH + pad, HEIGHT + pad,
+        canvas.create_rectangle(-pad, -pad, WIDTH + pad, HEIGHT + pad,
                           fill="#0B3D0B", outline="#071F05", tags="board_border")
-        # Inner shadow edge
-        f.create_rectangle(0, 0, WIDTH, HEIGHT,
+        canvas.create_rectangle(0, 0, WIDTH, HEIGHT,
                           fill="", outline="#1A5C1A", width=2, tags="board_border")
 
         current = "A6"
         for i in range(6):
             for x in range(6):
                 is_dark = (x + i) % 2 == 0
-                base = "#2E4A1E" if is_dark else "#233D14"
-                dark = "#1A3A0E" if is_dark else "#152B0B"
+                if is_dark:
+                    base = "#2E4A1E"
+                    dark = "#1A3A0E"
+                else:
+                    base = "#233D14"
+                    dark = "#152B0B"
 
-                x1 = x * self.sqw
-                y1 = i * self.sqh
+                x1 = x * self.square_width
+                y1 = i * self.square_height
 
-                f.create_rectangle(
-                    x1, y1, x1 + self.sqw, y1 + self.sqh,
+                canvas.create_rectangle(
+                    x1, y1, x1 + self.square_width, y1 + self.square_height,
                     fill=base, outline="#1A2E0C", tags="square"
                 )
 
-                self._draw_tile_texture(x1, y1, self.sqw, self.sqh, dark)
+                self._draw_tile_texture(x1, y1, self.square_width, self.square_height, dark)
 
-                x_center = x1 + self.sqw // 2
-                y_center = y1 + self.sqh // 2
+                x_center = x1 + self.square_width // 2
+                y_center = y1 + self.square_height // 2
                 self.board_data[current] = (x_center, y_center, None)
                 current = self.__progression(current)
 
     def draw_jungle_ambient(self):
-        """Draw static jungle foliage around the board edges."""
-        # Hanging vines from top of canvas
         for i in range(10):
             x = randint(10, WIDTH - 10)
             vine_len = randint(50, 140)
-            pts = []
+            points = []
             for j in range(12):
                 t = j / 12
                 sway = math.sin(t * math.pi * 2.5) * 10 * t
-                pts.extend([x + sway, -5 + vine_len * t])
-            f.create_line(*pts, fill="#1B5E20", width=3, smooth=True, tags="bg_foliage")
-            # Small leaf at end (ambient, not a wall)
+                points.extend([x + sway, -5 + vine_len * t])
+            canvas.create_line(*points, fill="#1B5E20", width=3, smooth=True, tags="bg_foliage")
             self._draw_leaf_shape(
-                pts[-2], pts[-1] - 5, 90 + randint(-20, 20),
+                points[-2], points[-1] - 5, 90 + randint(-20, 20),
                 randint(8, 13), choice(["#2E7D32", "#388E3C"]), "#0B3D0B",
                 tag="bg_foliage"
             )
 
-        # Dense corner foliage
         corners = [
             (15, 15, 135),
             (WIDTH - 15, 15, 45),
@@ -455,7 +805,6 @@ class Board:
                     tag="bg_foliage"
                 )
 
-        # Low bushes along the bottom
         for i in range(8):
             x = i * (WIDTH // 7) + randint(5, 25)
             y = HEIGHT - randint(3, 12)
@@ -463,33 +812,29 @@ class Board:
                 x_offset = randint(-18, 18)
                 y_offset = randint(-12, 4)
                 size = randint(7, 15)
-                f.create_oval(x + x_offset - size, y + y_offset - size, x + x_offset + size, y + y_offset + size,
+                canvas.create_oval(x + x_offset - size, y + y_offset - size, x + x_offset + size, y + y_offset + size,
                              fill="#1B5E20", outline="#0B3D0B", tags="bg_foliage")
 
-        # Push ambient behind everything
-        f.tag_lower("bg_foliage")
-        f.tag_lower("board_border")
+        canvas.tag_lower("bg_foliage")
+        canvas.tag_lower("board_border")
 
     def animate_jungle(self):
         if self.won:
             self._animate_win()
-            f.after(50, self.animate_jungle)
+            canvas.after(50, self.animate_jungle)
             return
         
         self.tick += 1
 
-        # Animate fireflies
         for firefly in self.fireflies:
             firefly["x"] += firefly["speed_x"]
             firefly["y"] += firefly["speed_y"]
 
-            # Bounce off edges
             if firefly["x"] < 0 or firefly["x"] > WIDTH:
                 firefly["speed_x"] *= -1
             if firefly["y"] < 0 or firefly["y"] > HEIGHT:
                 firefly["speed_y"] *= -1
 
-            # Random direction change
             if randint(0, 40) == 0:
                 firefly["speed_x"] += uniform(-0.3, 0.3)
                 firefly["speed_y"] += uniform(-0.3, 0.3)
@@ -504,64 +849,58 @@ class Board:
             b = int(30 + 20 * glow)
             color = f"#{r:02x}{g:02x}{b:02x}"
 
-            f.delete(firefly["tag"])
+            canvas.delete(firefly["tag"])
 
-            # Outer glow ring
             glow_size = 2 + int(3 * glow)
-            f.create_oval(
+            canvas.create_oval(
                 firefly["x"] - glow_size, firefly["y"] - glow_size,
                 firefly["x"] + glow_size, firefly["y"] + glow_size,
                 fill=color, outline="", tags=firefly["tag"]
             )
-            # Core
             core_size = 1 + int(1 * glow)
-            f.create_oval(
+            canvas.create_oval(
                 firefly["x"] - core_size, firefly["y"] - core_size,
                 firefly["x"] + core_size, firefly["y"] + core_size,
                 fill="#CCDDAA", outline="", tags=firefly["tag"]
             )
 
-            f.tag_raise(firefly["tag"])
+            canvas.tag_raise(firefly["tag"])
 
-        # Animate vanishing chests
-        for vc in self.vanishing_chests[:]:
-            vc["frame"] += 1
-            tag = f"vanish_{vc['square']}"
-            f.delete(tag)
+        for chest in self.vanishing_chests[:]:
+            chest["frame"] += 1
+            tag = f"vanish_{chest['square']}"
+            canvas.delete(tag)
 
-            if vc["frame"] >= vc["max_frames"]:
-                self.vanishing_chests.remove(vc)
+            if chest["frame"] >= chest["max_frames"]:
+                self.vanishing_chests.remove(chest)
                 continue
 
-            t = vc["frame"] / vc["max_frames"]
-            x1, y1 = vc["x"], vc["y"]
+            progress = chest["frame"] / chest["max_frames"]
+            x1, y1 = chest["x"], chest["y"]
 
-            # Expanding golden glow that fades out
-            radius = 5 + t * 28
-            r = int(255 * (1 - t))
-            g = int(220 * (1 - t))
-            b = int(50 * (1 - t))
+            radius = 5 + progress * 28
+            r = int(255 * (1 - progress))
+            g = int(220 * (1 - progress))
+            b = int(50 * (1 - progress))
             glow_color = f"#{r:02x}{g:02x}{b:02x}"
-            f.create_oval(x1 - radius, y1 - radius, x1 + radius, y1 + radius,
+            canvas.create_oval(x1 - radius, y1 - radius, x1 + radius, y1 + radius,
                           fill=glow_color, outline="", tags=tag)
 
-            # Sparkle particles flying outward
             for i in range(10):
-                angle = i * math.pi / 5 + t * 3
-                dist = 5 + t * 35
+                angle = i * math.pi / 5 + progress * 3
+                dist = 5 + progress * 35
                 x2 = x1 + math.cos(angle) * dist
                 y2 = y1 + math.sin(angle) * dist
-                size = max(1, 5 - int(t * 5))
-                r = int(255 * (1 - t))
-                g = int(255 * (1 - t))
-                b = int(200 * (1 - t))
+                size = max(1, 5 - int(progress * 5))
+                r = int(255 * (1 - progress))
+                g = int(255 * (1 - progress))
+                b = int(200 * (1 - progress))
                 color = f"#{r:02x}{g:02x}{b:02x}"
-                f.create_oval(x2 - size, y2 - size, x2 + size, y2 + size,
+                canvas.create_oval(x2 - size, y2 - size, x2 + size, y2 + size,
                               fill=color, outline="", tags=tag)
 
-            f.tag_raise(tag)
+            canvas.tag_raise(tag)
 
-        # Animate snakes (original logic preserved)
         for snake in self.snakes:
             if randint(0, 15) == 0:
                 angle = math.atan2(snake["y_speed"], snake["x_speed"]) + (randint(-1, 1) * 0.5)
@@ -596,29 +935,29 @@ class Board:
             if len(snake["history"]) > snake["length"]:
                 snake["history"].pop()
 
-            f.delete(snake["tags"])
+            canvas.delete(snake["tags"])
 
             if len(snake["history"]) > 1:
                 for i in range(len(snake["history"]) - 1):
                     x1, y1 = snake["history"][i]
                     x2, y2 = snake["history"][i + 1]
                     w = max(1, 3 - int((i / snake["length"]) * 2))
-                    f.create_line(x1, y1, x2, y2, fill=snake["color"], width=w,
+                    canvas.create_line(x1, y1, x2, y2, fill=snake["color"], width=w,
                                  tags=snake["tags"], capstyle="round")
 
-            if f.find_withtag("square"):
-                f.tag_raise(snake["tags"], "square")
-            if f.find_withtag("pl"):
-                f.tag_lower(snake["tags"], "pl")
-            if f.find_withtag("bot"):
-                f.tag_lower(snake["tags"], "bot")
-            if f.find_withtag("wall"):
-                f.tag_lower(snake["tags"], "wall")
+            if canvas.find_withtag("square"):
+                canvas.tag_raise(snake["tags"], "square")
+            if canvas.find_withtag("pl"):
+                canvas.tag_lower(snake["tags"], "pl")
+            if canvas.find_withtag("bot"):
+                canvas.tag_lower(snake["tags"], "bot")
+            if canvas.find_withtag("wall"):
+                canvas.tag_lower(snake["tags"], "wall")
 
-        f.after(50, self.animate_jungle)
+        canvas.after(50, self.animate_jungle)
 
-    def validate_move(self, command: str, pl: bool):
-        location = self.__piece_location(pl)
+    def validate_move(self, command: str, is_player: bool):
+        location = self.__piece_location(is_player)
         if location is None or self.won:
             return 1
 
@@ -662,8 +1001,7 @@ class Board:
         if piece is not None:
             return 1
 
-        self.draw_player(pl, location, target, direction)
-        # Vanishing chest if stepping onto one
+        self.draw_player(is_player, location, target, direction)
         if target in self.chests and self.chests[target] == "closed":
             data = self.board_data.get(target)
             if data:
@@ -676,23 +1014,18 @@ class Board:
                 })
             del self.chests[target]
             self.draw_chests()
-            if pl:
+            if is_player:
                 print("Player touches chest")
             else:
                 print("Bot touches chest")
-            self._award_powerup(pl)
-        # if pl:
-        #     who = "player"
-        # else:
-        #     who = "bot"
-        #print(f"DEBUG: Moving {who} from {location} to {target}")
+            self._award_powerup(is_player)
         return 0
 
     def check_win(self):
         location = self.__piece_location(self.check_who)
         if location is None:
             if not self.won:
-                r.after(50, self.check_win)
+                root.after(50, self.check_win)
             return
 
         one, two = location[0], location[1]
@@ -712,21 +1045,18 @@ class Board:
                 self._draw_win_screen()
 
         if not self.won:
-            r.after(50, self.check_win)
+            root.after(50, self.check_win)
 
     def _draw_win_screen(self):
-        """Draw the win/lose overlay and start particles."""
         is_win = self.win_type == "player"
         canvas_width = WIDTH + 200
 
-        # Dark overlay
         if is_win:
             overlay = "#0A1F05"
         else:
             overlay = "#1F0505"
-        f.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
+        canvas.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
 
-        # Large title with shadow
         if is_win:
             title = "VICTORY"
             title_color = "#FFD700"
@@ -738,20 +1068,18 @@ class Board:
         x1 = canvas_width // 2
         y1 = HEIGHT // 2 - 30
 
-        f.create_text(x1 + 3, y1 + 3, text=title,
+        canvas.create_text(x1 + 3, y1 + 3, text=title,
                       font=("Helvetica", 64, "bold"), fill=shadow_color, tags="win_title_shadow")
-        f.create_text(x1, y1, text=title,
+        canvas.create_text(x1, y1, text=title,
                       font=("Helvetica", 64, "bold"), fill=title_color, tags="win_title")
 
-        # Subtitle
         if is_win:
             subtitle = "You reached the other side!"
         else:
             subtitle = "The bot beat you!"
-        f.create_text(x1, y1 + 60, text=subtitle,
+        canvas.create_text(x1, y1 + 60, text=subtitle,
                       font=("Helvetica", 20), fill="#CCCCCC", tags="win_subtitle")
 
-        # Particles differ by outcome
         self.win_particles = []
         if is_win:
             count = 50
@@ -782,15 +1110,13 @@ class Board:
             })
 
     def _animate_win(self):
-        """Animate the win/lose screen — pulsing text and particles."""
         self.win_frame += 1
         is_win = self.win_type == "player"
         canvas_width = WIDTH + 200
         x1 = canvas_width // 2
         y1 = HEIGHT // 2 - 30
 
-        # Pulsing title glow
-        f.delete("win_glow")
+        canvas.delete("win_glow")
         pulse = abs(math.sin(self.win_frame * 0.06))
         glow_radius = 40 + int(30 * pulse)
         intensity = int(60 * pulse)
@@ -798,19 +1124,17 @@ class Board:
             glow_color = f"#{intensity:02x}{int(intensity*0.85):02x}00"
         else:
             glow_color = f"#{intensity:02x}0000"
-        f.create_oval(x1 - glow_radius, y1 - glow_radius,
+        canvas.create_oval(x1 - glow_radius, y1 - glow_radius,
                       x1 + glow_radius, y1 + glow_radius,
                       fill=glow_color, outline="", tags="win_glow")
-        f.tag_lower("win_glow", "win_title_shadow")
+        canvas.tag_lower("win_glow", "win_title_shadow")
 
-        # Subtle title bounce
         bounce = int(math.sin(self.win_frame * 0.08) * 3)
-        f.coords("win_title", x1, y1 + bounce)
-        f.coords("win_title_shadow", x1 + 3, y1 + bounce + 3)
+        canvas.coords("win_title", x1, y1 + bounce)
+        canvas.coords("win_title_shadow", x1 + 3, y1 + bounce + 3)
 
-        # Animate particles
         for p in self.win_particles[:]:
-            f.delete(p["tag"])
+            canvas.delete(p["tag"])
             p["x"] += p["speed_x"] + math.sin(self.win_frame * 0.04 + p["phase"]) * 0.3
             p["y"] += p["speed_y"]
 
@@ -822,37 +1146,32 @@ class Board:
                     p["y"] = HEIGHT + randint(5, 30)
 
             if 0 <= p["y"] <= HEIGHT:
-                f.create_oval(p["x"] - p["size"], p["y"] - p["size"],
+                canvas.create_oval(p["x"] - p["size"], p["y"] - p["size"],
                               p["x"] + p["size"], p["y"] + p["size"],
                               fill=p["color"], outline="", tags=p["tag"])
 
     def _build_ml_state(self):
-        """Build a GameState from the current board for bot decision-making."""
-        s = bot_ml.GameState()
-        # Player position (1-indexed -> 0-indexed)
-        ploc = self.__piece_location(True)
-        if ploc:
-            s.p_col = ord(ploc[0]) - ord("A")
-            s.p_row = int(ploc[1]) - 1
-        # Bot position
-        bloc = self.__piece_location(False)
-        if bloc:
-            s.b_col = ord(bloc[0]) - ord("A")
-            s.b_row = int(bloc[1]) - 1
-        # Walls (1-indexed -> 0-indexed)
-        for col_l, row_1 in self.horizontal_walls:
-            s.h_walls.add((ord(col_l) - ord("A"), row_1 - 1))
-        for col_l, row_1 in self.vertical_walls:
-            s.v_walls.add((ord(col_l) - ord("A"), row_1 - 1))
-        s.p_sticks = self.sticks_left
-        s.b_sticks = self.bot_sticks_left
-        s.to_move = True  # always bot's turn when this is called
-        return s
+        state = GameState()
+        player_location = self.__piece_location(True)
+        if player_location:
+            state.p_col = ord(player_location[0]) - ord("A")
+            state.p_row = int(player_location[1]) - 1
+        bot_location = self.__piece_location(False)
+        if bot_location:
+            state.b_col = ord(bot_location[0]) - ord("A")
+            state.b_row = int(bot_location[1]) - 1
+        for column_letter, row_number in self.horizontal_walls:
+            state.h_walls.add((ord(column_letter) - ord("A"), row_number - 1))
+        for column_letter, row_number in self.vertical_walls:
+            state.v_walls.add((ord(column_letter) - ord("A"), row_number - 1))
+        state.p_sticks = self.sticks_left
+        state.b_sticks = self.bot_sticks_left
+        state.to_move = True
+        return state
 
     def _blocker_pick_action(self):
-        """Use the deterministic blocker strategy to pick the bot's move."""
         state = self._build_ml_state()
-        move = bot_ml.pick_action_blocker(state, verbose=True)
+        move = pick_action_blocker(state, verbose=True)
         if move is None:
             print("  blocker: no move returned")
             return False
@@ -864,31 +1183,31 @@ class Board:
                 print(f"  blocker: invalid move {kind}")
             return ok
         elif kind == "h_wall":
-            wcol, wrow = move[1], move[2]
-            col_l = chr(ord("A") + wcol)
-            row_1 = wrow + 1
-            wall = (col_l, row_1)
+            wall_column, wall_row = move[1], move[2]
+            column_letter = chr(ord("A") + wall_column)
+            row_number = wall_row + 1
+            wall = (column_letter, row_number)
             if wall not in self.horizontal_walls and self.bot_sticks_left > 0:
                 self.horizontal_walls.add(wall)
-                y = 6 - row_1
-                line_y = y * self.sqh
-                self.draw_vine(wcol * self.sqw, line_y, (wcol + 1) * self.sqw, line_y, "#2E7D32")
+                y = 6 - row_number
+                line_y = y * self.square_height
+                self.draw_vine(wall_column * self.square_width, line_y, (wall_column + 1) * self.square_width, line_y, "#2E7D32")
                 self.bot_sticks_left -= 1
-                f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+                canvas.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
                 return True
             return False
         elif kind == "v_wall":
-            wcol, wrow = move[1], move[2]
-            col_l = chr(ord("A") + wcol)
-            row_1 = wrow + 1
-            wall = (col_l, row_1)
+            wall_column, wall_row = move[1], move[2]
+            column_letter = chr(ord("A") + wall_column)
+            row_number = wall_row + 1
+            wall = (column_letter, row_number)
             if wall not in self.vertical_walls and self.bot_sticks_left > 0:
                 self.vertical_walls.add(wall)
-                y = 6 - row_1
-                line_x = (wcol + 1) * self.sqw
-                self.draw_vine(line_x, y * self.sqh, line_x, (y + 1) * self.sqh, "#2E7D32")
+                y = 6 - row_number
+                line_x = (wall_column + 1) * self.square_width
+                self.draw_vine(line_x, y * self.square_height, line_x, (y + 1) * self.square_height, "#2E7D32")
                 self.bot_sticks_left -= 1
-                f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+                canvas.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
                 return True
             return False
         return False
@@ -896,7 +1215,7 @@ class Board:
     def bot(self):
         if self.won:
             return
-        r.after(1000, self.bot)
+        root.after(1000, self.bot)
 
         self.bot_move_log = ""
         self._blocker_pick_action()
@@ -905,63 +1224,62 @@ class Board:
         if self.won or self.sticks_left <= 0:
             return
         
-        x2 = event.x // self.sqw
-        y2 = event.y // self.sqh
+        grid_x = event.x // self.square_width
+        grid_y = event.y // self.square_height
         
-        if x2 >= 6 or y2 >= 6 or x2 < 0 or y2 < 0: # Basically if the user clicks outside
+        if grid_x >= 6 or grid_y >= 6 or grid_x < 0 or grid_y < 0:
             return
         
-        # Calculate distance to all 4 edges of the clicked cell to determine stick orientation
-        dist_left = event.x - (x2 * self.sqw)
-        dist_right = ((x2 + 1) * self.sqw) - event.x
-        dist_top = event.y - (y2 * self.sqh)
-        dist_bottom = ((y2 + 1) * self.sqh) - event.y
+        dist_left = event.x - (grid_x * self.square_width)
+        dist_right = ((grid_x + 1) * self.square_width) - event.x
+        dist_top = event.y - (grid_y * self.square_height)
+        dist_bottom = ((grid_y + 1) * self.square_height) - event.y
         min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
         placed = False
         if min_dist in (dist_top, dist_bottom):
-            center_y = y2 * self.sqh + self.sqh // 2
+            center_y = grid_y * self.square_height + self.square_height // 2
             if event.y < center_y:
-                wall_row = 6 - y2
+                wall_row = 6 - grid_y
                 if wall_row < 6:
-                    wall = (chr(ord('A') + x2), wall_row)
+                    wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
-                        line_y = y2 * self.sqh
-                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#4CAF50")
+                        line_y = grid_y * self.square_height
+                        self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
             else:
-                wall_row = 5 - y2
+                wall_row = 5 - grid_y
                 if wall_row >= 1:
-                    wall = (chr(ord('A') + x2), wall_row)
+                    wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
-                        line_y = (y2 + 1) * self.sqh
-                        self.draw_vine(x2 * self.sqw, line_y, (x2 + 1) * self.sqw, line_y, "#4CAF50")
+                        line_y = (grid_y + 1) * self.square_height
+                        self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
         else:
-            center_x = x2 * self.sqw + self.sqw // 2
-            row_str = 6 - y2
+            center_x = grid_x * self.square_width + self.square_width // 2
+            row_str = 6 - grid_y
             if event.x < center_x:
-                if x2 > 0:
-                    wall = (chr(ord('A') + x2 - 1), row_str)
+                if grid_x > 0:
+                    wall = (chr(ord('A') + grid_x - 1), row_str)
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
-                        line_x = x2 * self.sqw
-                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#4CAF50")
+                        line_x = grid_x * self.square_width
+                        self.draw_vine(line_x, grid_y * self.square_height, line_x, (grid_y + 1) * self.square_height, "#4CAF50")
                         placed = True
             else:
-                if x2 < 5:
-                    wall = (chr(ord('A') + x2), row_str)
+                if grid_x < 5:
+                    wall = (chr(ord('A') + grid_x), row_str)
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
-                        line_x = (x2 + 1) * self.sqw
-                        self.draw_vine(line_x, y2 * self.sqh, line_x, (y2 + 1) * self.sqh, "#4CAF50")
+                        line_x = (grid_x + 1) * self.square_width
+                        self.draw_vine(line_x, grid_y * self.square_height, line_x, (grid_y + 1) * self.square_height, "#4CAF50")
                         placed = True
 
         if placed:
             self.sticks_left -= 1
-            f.itemconfigure("sticksval", text=str(self.sticks_left))
+            canvas.itemconfigure("sticksval", text=str(self.sticks_left))
 
     def onplayerclick(self, event):
         key = event.keysym.lower()
@@ -969,18 +1287,18 @@ class Board:
             self.validate_move(key, True)
 
 
-c = Board()
-c.draw_board()
-c.draw_jungle_ambient()
-c.show_notation()
-c.draw_player(True, "C1", "C1", "down")
-c.draw_player(False, "D6", "D6", "down")
-c.draw_chests()
-c.rightside()
-c.bot()
-c.animate_jungle()
-c.check_win()
-r.bind("<Key>", c.onplayerclick)
-f.bind("<Button-1>", c.on_mouse_click)
-f.focus_set()
-r.mainloop()
+board = Board()
+board.draw_board()
+board.draw_jungle_ambient()
+board.show_notation()
+board.draw_player(True, "C1", "C1", "down")
+board.draw_player(False, "D6", "D6", "down")
+board.draw_chests()
+board.rightside()
+board.bot()
+board.animate_jungle()
+board.check_win()
+root.bind("<Key>", board.onplayerclick)
+canvas.bind("<Button-1>", board.on_mouse_click)
+canvas.focus_set()
+root.mainloop()
