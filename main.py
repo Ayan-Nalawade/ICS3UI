@@ -2,6 +2,7 @@ import tkinter as tk
 from random import randint, choice, uniform
 import math
 from PIL import Image, ImageTk
+import bot_ml
 
 r = tk.Tk()
 
@@ -93,6 +94,7 @@ class Board:
         self.win_frame = 0
         self.win_type = None
         self.win_particles = []
+        self.bot_move_log = ""  # latest move description shown on screen
         
     def rightside(self): 
         HEIGHTy = 50
@@ -824,53 +826,80 @@ class Board:
                               p["x"] + p["size"], p["y"] + p["size"],
                               fill=p["color"], outline="", tags=p["tag"])
 
+    def _build_ml_state(self):
+        """Build a GameState from the current board for bot decision-making."""
+        s = bot_ml.GameState()
+        # Player position (1-indexed -> 0-indexed)
+        ploc = self.__piece_location(True)
+        if ploc:
+            s.p_col = ord(ploc[0]) - ord("A")
+            s.p_row = int(ploc[1]) - 1
+        # Bot position
+        bloc = self.__piece_location(False)
+        if bloc:
+            s.b_col = ord(bloc[0]) - ord("A")
+            s.b_row = int(bloc[1]) - 1
+        # Walls (1-indexed -> 0-indexed)
+        for col_l, row_1 in self.horizontal_walls:
+            s.h_walls.add((ord(col_l) - ord("A"), row_1 - 1))
+        for col_l, row_1 in self.vertical_walls:
+            s.v_walls.add((ord(col_l) - ord("A"), row_1 - 1))
+        s.p_sticks = self.sticks_left
+        s.b_sticks = self.bot_sticks_left
+        s.to_move = True  # always bot's turn when this is called
+        return s
+
+    def _blocker_pick_action(self):
+        """Use the deterministic blocker strategy to pick the bot's move."""
+        state = self._build_ml_state()
+        move = bot_ml.pick_action_blocker(state, verbose=True)
+        if move is None:
+            print("  blocker: no move returned")
+            return False
+
+        kind = move[0]
+        if kind in ("up", "down", "left", "right"):
+            ok = self.validate_move(kind, False) == 0
+            if not ok:
+                print(f"  blocker: invalid move {kind}")
+            return ok
+        elif kind == "h_wall":
+            wcol, wrow = move[1], move[2]
+            col_l = chr(ord("A") + wcol)
+            row_1 = wrow + 1
+            wall = (col_l, row_1)
+            if wall not in self.horizontal_walls and self.bot_sticks_left > 0:
+                self.horizontal_walls.add(wall)
+                y = 6 - row_1
+                line_y = y * self.sqh
+                self.draw_vine(wcol * self.sqw, line_y, (wcol + 1) * self.sqw, line_y, "#2E7D32")
+                self.bot_sticks_left -= 1
+                f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+                return True
+            return False
+        elif kind == "v_wall":
+            wcol, wrow = move[1], move[2]
+            col_l = chr(ord("A") + wcol)
+            row_1 = wrow + 1
+            wall = (col_l, row_1)
+            if wall not in self.vertical_walls and self.bot_sticks_left > 0:
+                self.vertical_walls.add(wall)
+                y = 6 - row_1
+                line_x = (wcol + 1) * self.sqw
+                self.draw_vine(line_x, y * self.sqh, line_x, (y + 1) * self.sqh, "#2E7D32")
+                self.bot_sticks_left -= 1
+                f.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+                return True
+            return False
+        return False
+
     def bot(self):
         if self.won:
             return
         r.after(1000, self.bot)
-        
-        # 1 in 3 chance the bot decides to place a stick instead of moving (if it has any left)
-        if self.bot_sticks_left > 0 and randint(0, 2) == 0:
-            placed = False
-            for _ in range(20): # Try up to 20 random spots
-                if randint(0, 1) == 0: # Try horizontal
-                    x = randint(0, 5)
-                    wall_row = randint(1, 5)
-                    wall = (chr(ord('A') + x), wall_row)
-                    if wall not in self.horizontal_walls:
-                        self.horizontal_walls.add(wall)
-                        y = 6 - wall_row
-                        line_y = y * self.sqh
-                        self.draw_vine(x * self.sqw, line_y, (x + 1) * self.sqw, line_y, "#2E7D32")
-                        placed = True
-                        break
-                else: # Try vertical
-                    x = randint(0, 4)
-                    wall_row = randint(1, 6)
-                    wall = (chr(ord('A') + x), wall_row)
-                    if wall not in self.vertical_walls:
-                        self.vertical_walls.add(wall)
-                        y = 6 - wall_row
-                        line_x = (x + 1) * self.sqw
-                        self.draw_vine(line_x, y * self.sqh, line_x, (y + 1) * self.sqh, "#2E7D32")
-                        placed = True
-                        break
-            
-            if placed:
-                self.bot_sticks_left -= 1
-                return # Skip movement since the bot spent its turn placing a stick
 
-        k = self.validate_move("down", False)
-        if k == 1:
-            m = randint(0, 1)
-            if m == 0:
-                x = self.validate_move("left", False)
-                if x == 1:
-                    self.validate_move("right", False)
-            else:
-                x = self.validate_move("right", False)
-                if x == 1:
-                    self.validate_move("left", False)
+        self.bot_move_log = ""
+        self._blocker_pick_action()
 
     def on_mouse_click(self, event):
         if self.won or self.sticks_left <= 0:
