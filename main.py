@@ -279,7 +279,7 @@ def _evaluate_state(state):
     return score
 
 
-def pick_action_blocker(state, verbose=False):
+def pick_action_blocker(state, verbose=True):
     moves = state.legal_moves(nearby_only=True)
     if not moves:
         return None
@@ -295,7 +295,7 @@ def pick_action_blocker(state, verbose=False):
             best_move = move
 
     if verbose:
-        print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
+        print(f"DEBUG:  blocker from {_format_position(state.b_col, state.b_row)}: "
               f"best is {_format_move(best_move)} (score={best_score})")
 
     return best_move
@@ -945,9 +945,9 @@ class Board:
             del self.chests[target]
             self.draw_chests()
             if is_player:
-                print("Player touches chest")
+                print("DEBUG: Player touches chest")
             else:
-                print("Bot touches chest")
+                print("DEBUG: Bot touches chest")
             self._award_powerup(is_player)
         return 0
 
@@ -1103,14 +1103,14 @@ class Board:
         state = self._build_ml_state()
         move = pick_action_blocker(state, verbose=True)
         if move is None:
-            print("  blocker: no move returned")
+            print("DEBUG:  blocker: no move returned")
             return False
 
         kind = move[0]
         if kind in ("up", "down", "left", "right"):
             ok = self.validate_move(kind, False) == 0
             if not ok:
-                print(f"  blocker: invalid move {kind}")
+                print(f"DEBUG:  blocker: invalid move {kind}")
             return ok
         elif kind == "h_wall":
             wall_column, wall_row = move[1], move[2]
