@@ -2,7 +2,7 @@ import tkinter as tk
 import random
 import sys
 import math
-from random import randint, choice, uniform
+from random import randint, choice, uniform, shuffle
 from PIL import Image, ImageTk
 import numpy as np
 from collections import deque
@@ -14,6 +14,7 @@ class GameState:
     __slots__ = (
         "p_col", "p_row", "b_col", "b_row",
         "h_walls", "v_walls", "p_sticks", "b_sticks", "to_move",
+        "p_destroys", "b_destroys",
     )
 
     def __init__(self):
@@ -26,6 +27,8 @@ class GameState:
         self.p_sticks = 4
         self.b_sticks = 4
         self.to_move = True
+        self.p_destroys = 2
+        self.b_destroys = 2
 
     def copy(self):
         s = GameState()
@@ -34,6 +37,7 @@ class GameState:
         s.h_walls = set(self.h_walls)
         s.v_walls = set(self.v_walls)
         s.p_sticks, s.b_sticks = self.p_sticks, self.b_sticks
+        s.p_destroys, s.b_destroys = self.p_destroys, self.b_destroys
         s.to_move = self.to_move
         return s
 
@@ -126,6 +130,34 @@ class GameState:
                         if (wall_col, wall_row) not in self.v_walls:
                             moves.append(("v_wall", wall_col, wall_row))
 
+        destroys = self.b_destroys if is_bot else self.p_destroys
+        if destroys > 0:
+            seen_destroy = set()
+            if nearby_only:
+                for drow in range(-2, 3):
+                    for dcol in range(-2, 3):
+                        wall_row = row + drow
+                        wall_col = col + dcol
+                        if 0 <= wall_col < 6 and 0 <= wall_row < 5:
+                            key = ("dh", wall_col, wall_row)
+                            if key not in seen_destroy and (wall_col, wall_row) in self.h_walls:
+                                seen_destroy.add(key)
+                                moves.append(("destroy_h", wall_col, wall_row))
+                        if 0 <= wall_col < 5 and 0 <= wall_row < 6:
+                            key = ("dv", wall_col, wall_row)
+                            if key not in seen_destroy and (wall_col, wall_row) in self.v_walls:
+                                seen_destroy.add(key)
+                                moves.append(("destroy_v", wall_col, wall_row))
+            else:
+                for wall_col in range(6):
+                    for wall_row in range(5):
+                        if (wall_col, wall_row) in self.h_walls:
+                            moves.append(("destroy_h", wall_col, wall_row))
+                for wall_col in range(5):
+                    for wall_row in range(6):
+                        if (wall_col, wall_row) in self.v_walls:
+                            moves.append(("destroy_v", wall_col, wall_row))
+
         random.shuffle(moves)
         return moves
 
@@ -167,6 +199,20 @@ class GameState:
                 s.b_sticks -= 1
             else:
                 s.p_sticks -= 1
+        elif kind == "destroy_h":
+            _, wall_col, wall_row = move
+            s.h_walls.discard((wall_col, wall_row))
+            if s.to_move:
+                s.b_destroys -= 1
+            else:
+                s.p_destroys -= 1
+        elif kind == "destroy_v":
+            _, wall_col, wall_row = move
+            s.v_walls.discard((wall_col, wall_row))
+            if s.to_move:
+                s.b_destroys -= 1
+            else:
+                s.p_destroys -= 1
 
         s.to_move = not s.to_move
         return s
@@ -246,6 +292,15 @@ def _format_move(move):
         col2 = chr(ord("A") + move[1] + 1)
         row = move[2] + 1
         return f"v_wall {col}{row}-{col2}{row}"
+    if kind == "destroy_h":
+        col = chr(ord("A") + move[1])
+        row = move[2] + 1
+        return f"destroy_h {col}{row}-{col}{row+1}"
+    if kind == "destroy_v":
+        col = chr(ord("A") + move[1])
+        col2 = chr(ord("A") + move[1] + 1)
+        row = move[2] + 1
+        return f"destroy_v {col}{row}-{col2}{row}"
     return str(move)
 
 
@@ -412,6 +467,9 @@ class Board:
         self._place_chests()
         self.player_powerups = []
         self.bot_powerups = []
+        self.wall_colors = {}
+        self.player_destroys = 2
+        self.bot_destroys = 2
         self.win_frame = 0
         self.win_type = None
         self.win_particles = []
@@ -444,7 +502,10 @@ class Board:
         canvas.create_text(panel_center_x - 90, panel_center_y + 310, text="Bot Sticks:", font=("Helvetica", 16, "bold"), anchor="w", tags="botstickstxt", fill="white")
         canvas.create_text(panel_center_x + 75, panel_center_y + 310, text=str(self.bot_sticks_left), font=("Helvetica", 16, "bold"), anchor="w", tags="botsticksval", fill="#FF9800")
 
-        canvas.create_text(panel_center_x, panel_center_y + 370, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
+        canvas.create_text(panel_center_x - 90, panel_center_y + 350, text="Destroys:", font=("Helvetica", 16, "bold"), anchor="w", tags="destroytxt", fill="white")
+        canvas.create_text(panel_center_x + 75, panel_center_y + 350, text=str(self.player_destroys), font=("Helvetica", 16, "bold"), anchor="w", tags="destroysval", fill="#FF5722")
+
+        canvas.create_text(panel_center_x, panel_center_y + 400, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
         canvas.create_text(panel_center_x, panel_center_y + 440, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
                       font=("Helvetica", 12), tags="instructions", fill="#CCE5CC", width=170)
 
@@ -499,10 +560,8 @@ class Board:
     def _place_chests(self):
         available = []
         for col in ["A", "B", "C", "D", "E", "F"]:
-            for row in range(1, 7):
+            for row in range(2, 6):
                 available.append(f"{col}{row}")
-        available.remove("C1")
-        available.remove("D6")
         for _ in range(randint(3, 4)):
             square = choice(available)
             available.remove(square)
@@ -542,6 +601,16 @@ class Board:
                              fill="#F44336", outline="", tags="pu_indicator")
                 canvas.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
+            elif powerup == "split":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#9C27B0", outline="", tags="pu_indicator")
+                canvas.create_text(center_x, center_y, text="=", font=("Helvetica", 14, "bold"),
+                             fill="white", tags="pu_indicator")
+            elif powerup == "maze":
+                canvas.create_rectangle(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                                  fill="#FF5722", outline="", tags="pu_indicator")
+                canvas.create_text(center_x, center_y, text="#", font=("Helvetica", 14, "bold"),
+                             fill="white", tags="pu_indicator")
 
         for i, powerup in enumerate(self.player_powerups[:3]):
             x_offset = panel_center_x - 45 + i * (rect_size + rect_spacing)
@@ -557,9 +626,20 @@ class Board:
                              fill="#F44336", outline="", tags="pu_indicator")
                 canvas.create_text(center_x, center_y, text="-", font=("Helvetica", 16, "bold"),
                              fill="white", tags="pu_indicator")
+            elif powerup == "split":
+                canvas.create_oval(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                             fill="#9C27B0", outline="", tags="pu_indicator")
+                canvas.create_text(center_x, center_y, text="=", font=("Helvetica", 14, "bold"),
+                             fill="white", tags="pu_indicator")
+            elif powerup == "maze":
+                canvas.create_rectangle(center_x - 8, center_y - 8, center_x + 8, center_y + 8,
+                                  fill="#FF5722", outline="", tags="pu_indicator")
+                canvas.create_text(center_x, center_y, text="#", font=("Helvetica", 14, "bold"),
+                             fill="white", tags="pu_indicator")
 
     def _award_powerup(self, is_player):
-        powerup = choice(["extra_stick", "erase_stick"])
+        powerup = choice(["extra_stick", "erase_stick", "split", "maze"])
+        print(f"DEBUG: awarded powerup '{powerup}' to {'player' if is_player else 'bot'}")
 
         if is_player:
             self.player_powerups.append(powerup)
@@ -568,7 +648,12 @@ class Board:
             elif powerup == "erase_stick":
                 self.horizontal_walls.clear()
                 self.vertical_walls.clear()
+                self.wall_colors.clear()
                 canvas.delete("wall")
+            elif powerup == "split":
+                self._activate_split()
+            elif powerup == "maze":
+                self._activate_maze()
         else:
             self.bot_powerups.append(powerup)
             if powerup == "extra_stick":
@@ -576,11 +661,177 @@ class Board:
             elif powerup == "erase_stick":
                 self.horizontal_walls.clear()
                 self.vertical_walls.clear()
+                self.wall_colors.clear()
                 canvas.delete("wall")
+            elif powerup == "split":
+                self._activate_split()
+            elif powerup == "maze":
+                self._activate_maze()
 
         self._draw_powerups()
         canvas.itemconfigure("sticksval", text=str(self.sticks_left))
         canvas.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+
+    def _activate_split(self):
+        self.horizontal_walls.clear()
+        self.vertical_walls.clear()
+        self.wall_colors.clear()
+        canvas.delete("wall")
+
+        split_row = 3
+        left_bridge_col = 1
+        right_bridge_col = 4
+        for col_idx in range(6):
+            if col_idx == left_bridge_col or col_idx == right_bridge_col:
+                continue
+            col_letter = chr(ord("A") + col_idx)
+            self.horizontal_walls.add((col_letter, split_row))
+            self.wall_colors[("h", col_letter, split_row)] = "#9C27B0"
+            grid_y = 6 - split_row
+            line_y = grid_y * self.square_height
+            x1 = col_idx * self.square_width
+            x2 = (col_idx + 1) * self.square_width
+            self.draw_vine(x1, line_y, x2, line_y, "#9C27B0")
+
+        player_pos = self.__piece_location(True)
+        if player_pos:
+            self.draw_player(True, player_pos, "C1", "down")
+        bot_pos = self.__piece_location(False)
+        if bot_pos:
+            self.draw_player(False, bot_pos, "D6", "down")
+
+    def _activate_maze(self):
+        state = GameState()
+        player_pos = self.__piece_location(True)
+        bot_pos = self.__piece_location(False)
+        if player_pos:
+            state.p_col = ord(player_pos[0]) - ord("A")
+            state.p_row = int(player_pos[1]) - 1
+        if bot_pos:
+            state.b_col = ord(bot_pos[0]) - ord("A")
+            state.b_row = int(bot_pos[1]) - 1
+
+        self.horizontal_walls.clear()
+        self.vertical_walls.clear()
+        self.wall_colors.clear()
+        canvas.delete("wall")
+
+        candidates = []
+        for col in range(6):
+            for row in range(5):
+                candidates.append(("h", col, row))
+        for col in range(5):
+            for row in range(6):
+                candidates.append(("v", col, row))
+        shuffle(candidates)
+
+        placed = 0
+        maze_color = "#FF5722"
+
+        for kind, col, row in candidates:
+            if kind == "h":
+                if (col, row) in state.h_walls:
+                    continue
+                state.h_walls.add((col, row))
+            else:
+                if (col, row) in state.v_walls:
+                    continue
+                state.v_walls.add((col, row))
+
+            bot_path = _bfs_path(state, is_bot=True)
+            player_path = _bfs_path(state, is_bot=False)
+
+            if bot_path and player_path:
+                placed += 1
+                col_letter = chr(ord("A") + col)
+                if kind == "h":
+                    self.horizontal_walls.add((col_letter, row + 1))
+                    self.wall_colors[("h", col_letter, row + 1)] = maze_color
+                    grid_y = 6 - (row + 1)
+                    line_y = grid_y * self.square_height
+                    x1 = col * self.square_width
+                    x2 = (col + 1) * self.square_width
+                    self.draw_vine(x1, line_y, x2, line_y, maze_color)
+                else:
+                    self.vertical_walls.add((col_letter, row + 1))
+                    self.wall_colors[("v", col_letter, row + 1)] = maze_color
+                    y_grid = 6 - (row + 1)
+                    line_x = (col + 1) * self.square_width
+                    self.draw_vine(line_x, y_grid * self.square_height,
+                                   line_x, (y_grid + 1) * self.square_height, maze_color)
+            else:
+                if kind == "h":
+                    state.h_walls.remove((col, row))
+                else:
+                    state.v_walls.remove((col, row))
+
+        print(f"DEBUG: maze activated — {placed} walls placed out of {len(candidates)} candidates")
+
+    def _redraw_all_walls(self):
+        canvas.delete("wall")
+        for col_letter, row_number in self.horizontal_walls:
+            col_idx = ord(col_letter) - ord("A")
+            grid_y = 6 - row_number
+            line_y = grid_y * self.square_height
+            x1 = col_idx * self.square_width
+            x2 = (col_idx + 1) * self.square_width
+            color = self.wall_colors.get(("h", col_letter, row_number), "#4CAF50")
+            self.draw_vine(x1, line_y, x2, line_y, color)
+        for col_letter, row_number in self.vertical_walls:
+            col_idx = ord(col_letter) - ord("A")
+            y_grid = 6 - row_number
+            line_x = (col_idx + 1) * self.square_width
+            color = self.wall_colors.get(("v", col_letter, row_number), "#2E7D32")
+            self.draw_vine(line_x, y_grid * self.square_height,
+                           line_x, (y_grid + 1) * self.square_height, color)
+
+    def _destroy_wall(self, event):
+        grid_x = event.x // self.square_width
+        grid_y = event.y // self.square_height
+        if grid_x >= 6 or grid_y >= 6 or grid_x < 0 or grid_y < 0 or self.won:
+            return
+        if self.player_destroys <= 0:
+            return
+
+        dist_left = event.x - (grid_x * self.square_width)
+        dist_right = ((grid_x + 1) * self.square_width) - event.x
+        dist_top = event.y - (grid_y * self.square_height)
+        dist_bottom = ((grid_y + 1) * self.square_height) - event.y
+        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
+
+        removed = False
+        if min_dist in (dist_top, dist_bottom):
+            center_y = grid_y * self.square_height + self.square_height // 2
+            if event.y < center_y:
+                wall_row = 6 - grid_y
+            else:
+                wall_row = 5 - grid_y
+            wall = (chr(ord("A") + grid_x), wall_row)
+            if wall in self.horizontal_walls:
+                self.horizontal_walls.remove(wall)
+                self.wall_colors.pop(("h", wall[0], wall[1]), None)
+                removed = True
+        else:
+            row_str = 6 - grid_y
+            if event.x < grid_x * self.square_width + self.square_width // 2:
+                if grid_x > 0:
+                    wall = (chr(ord("A") + grid_x - 1), row_str)
+                else:
+                    return
+            else:
+                if grid_x < 5:
+                    wall = (chr(ord("A") + grid_x), row_str)
+                else:
+                    return
+            if wall in self.vertical_walls:
+                self.vertical_walls.remove(wall)
+                self.wall_colors.pop(("v", wall[0], wall[1]), None)
+                removed = True
+
+        if removed:
+            self.player_destroys -= 1
+            self._redraw_all_walls()
+            canvas.itemconfigure("destroysval", text=str(self.player_destroys))
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
         angle_rad = math.radians(angle)
@@ -1114,6 +1365,8 @@ class Board:
             state.v_walls.add((ord(column_letter) - ord("A"), row_number - 1))
         state.p_sticks = self.sticks_left
         state.b_sticks = self.bot_sticks_left
+        state.p_destroys = self.player_destroys
+        state.b_destroys = self.bot_destroys
         state.to_move = True
         return state
 
@@ -1137,6 +1390,7 @@ class Board:
             wall = (column_letter, row_number)
             if wall not in self.horizontal_walls and self.bot_sticks_left > 0:
                 self.horizontal_walls.add(wall)
+                self.wall_colors[("h", wall[0], wall[1])] = "#2E7D32"
                 y = 6 - row_number
                 line_y = y * self.square_height
                 self.draw_vine(wall_column * self.square_width, line_y, (wall_column + 1) * self.square_width, line_y, "#2E7D32")
@@ -1151,11 +1405,36 @@ class Board:
             wall = (column_letter, row_number)
             if wall not in self.vertical_walls and self.bot_sticks_left > 0:
                 self.vertical_walls.add(wall)
+                self.wall_colors[("v", wall[0], wall[1])] = "#2E7D32"
                 y = 6 - row_number
                 line_x = (wall_column + 1) * self.square_width
                 self.draw_vine(line_x, y * self.square_height, line_x, (y + 1) * self.square_height, "#2E7D32")
                 self.bot_sticks_left -= 1
                 canvas.itemconfigure("botsticksval", text=str(self.bot_sticks_left))
+                return True
+            return False
+        elif kind == "destroy_h":
+            wall_column, wall_row = move[1], move[2]
+            col_letter = chr(ord("A") + wall_column)
+            row_number = wall_row + 1
+            wall = (col_letter, row_number)
+            if wall in self.horizontal_walls and self.bot_destroys > 0:
+                self.horizontal_walls.remove(wall)
+                self.wall_colors.pop(("h", wall[0], wall[1]), None)
+                self.bot_destroys -= 1
+                self._redraw_all_walls()
+                return True
+            return False
+        elif kind == "destroy_v":
+            wall_column, wall_row = move[1], move[2]
+            col_letter = chr(ord("A") + wall_column)
+            row_number = wall_row + 1
+            wall = (col_letter, row_number)
+            if wall in self.vertical_walls and self.bot_destroys > 0:
+                self.vertical_walls.remove(wall)
+                self.wall_colors.pop(("v", wall[0], wall[1]), None)
+                self.bot_destroys -= 1
+                self._redraw_all_walls()
                 return True
             return False
         return False
@@ -1193,6 +1472,7 @@ class Board:
                     wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
+                        self.wall_colors[("h", wall[0], wall[1])] = "#4CAF50"
                         line_y = grid_y * self.square_height
                         self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
@@ -1202,6 +1482,7 @@ class Board:
                     wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
                         self.horizontal_walls.add(wall)
+                        self.wall_colors[("h", wall[0], wall[1])] = "#4CAF50"
                         line_y = (grid_y + 1) * self.square_height
                         self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
@@ -1213,6 +1494,7 @@ class Board:
                     wall = (chr(ord('A') + grid_x - 1), row_str)
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
+                        self.wall_colors[("v", wall[0], wall[1])] = "#4CAF50"
                         line_x = grid_x * self.square_width
                         self.draw_vine(line_x, grid_y * self.square_height, line_x, (grid_y + 1) * self.square_height, "#4CAF50")
                         placed = True
@@ -1221,6 +1503,7 @@ class Board:
                     wall = (chr(ord('A') + grid_x), row_str)
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
+                        self.wall_colors[("v", wall[0], wall[1])] = "#4CAF50"
                         line_x = (grid_x + 1) * self.square_width
                         self.draw_vine(line_x, grid_y * self.square_height, line_x, (grid_y + 1) * self.square_height, "#4CAF50")
                         placed = True
@@ -1248,5 +1531,6 @@ board.animate_jungle()
 board.check_win()
 root.bind("<Key>", board.onplayerclick)
 canvas.bind("<Button-1>", board.on_mouse_click)
+canvas.bind("<Button-3>", board._destroy_wall)
 canvas.focus_set()
 root.mainloop()
