@@ -233,27 +233,6 @@ def _bfs_path(state, is_bot):
     return None
 
 
-def _move_toward_goal(state):
-    is_bot = state.to_move
-    path = _bfs_path(state, is_bot)
-    if path is None or len(path) < 2:
-        return None
-
-    col, row = path[0]
-    next_col, next_row = path[1]
-    dcol, drow = next_col - col, next_row - row
-
-    if drow == 1:
-        return ("up",)
-    if drow == -1:
-        return ("down",)
-    if dcol == -1:
-        return ("left",)
-    if dcol == 1:
-        return ("right",)
-    return None
-
-
 def _format_move(move):
     kind = move[0]
     if kind in ("up", "down", "left", "right"):
@@ -274,101 +253,52 @@ def _format_position(col, row):
     return f"{chr(ord('A') + col)}{row + 1}"
 
 
-def _heuristic_opponent_move(state, block_chance=0.4):
-    if state.p_sticks > 0 and random.random() < block_chance:
-        bot_path = _bfs_path(state, is_bot=True)
-        if bot_path and len(bot_path) >= 3:
-            candidates = []
-            for i in range(1, len(bot_path) - 1):
-                col, row = bot_path[i - 1]
-                next_col, next_row = bot_path[i]
-                dcol, drow = next_col - col, next_row - row
-                if drow == 1 and (col, row) not in state.h_walls:
-                    candidates.append(("h_wall", col, row))
-                elif drow == -1:
-                    wall_row = row - 1
-                    if 0 <= wall_row < 5 and (col, wall_row) not in state.h_walls:
-                        candidates.append(("h_wall", col, wall_row))
-                elif dcol == -1:
-                    wall_col = col - 1
-                    if 0 <= wall_col < 5 and (wall_col, row) not in state.v_walls:
-                        candidates.append(("v_wall", wall_col, row))
-                elif dcol == 1 and (col, row) not in state.v_walls:
-                    candidates.append(("v_wall", col, row))
-            if candidates:
-                wall = random.choice(candidates)
-                if wall in state.legal_moves(nearby_only=False):
-                    return wall
+def _evaluate_state(state):
+    """Score a game state from the bot's perspective. Higher is better."""
+    score = 0
 
-    opp_path = _bfs_path(state, is_bot=False)
-    if opp_path and len(opp_path) >= 2:
-        col, row = opp_path[0]
-        next_col, next_row = opp_path[1]
-        dcol, drow = next_col - col, next_row - row
-        if drow == 1:
-            move = ("up",)
-        elif drow == -1:
-            move = ("down",)
-        elif dcol == -1:
-            move = ("left",)
-        elif dcol == 1:
-            move = ("right",)
-        else:
-            move = None
-        if move is not None and move in state.legal_moves(nearby_only=False):
-            return move
+    bot_progress = 5 - state.b_row
+    player_progress = state.p_row
+    score += bot_progress * 10
+    score -= player_progress * 10
 
-    moves = state.legal_moves(nearby_only=True)
-    if moves:
-        return random.choice(moves)
-    return None
+    bot_path = _bfs_path(state, is_bot=True)
+    if bot_path:
+        score += 15 - len(bot_path)
+    else:
+        score -= 50
 
+    player_path = _bfs_path(state, is_bot=False)
+    if player_path:
+        score -= 25 - len(player_path)
+    else:
+        score += 50
 
-def _block_opponent_path(state):
-    opp_path = _bfs_path(state, is_bot=False)
-    if opp_path and len(opp_path) >= 3:
-        for i in range(1, len(opp_path) - 1):
-            col, row = opp_path[i - 1]
-            next_col, next_row = opp_path[i]
-            dcol, drow = next_col - col, next_row - row
-            if drow == 1 and (col, row) not in state.h_walls and state.b_sticks > 0:
-                return ("h_wall", col, row)
-            if drow == -1:
-                wall_row = row - 1
-                if 0 <= wall_row < 5 and (col, wall_row) not in state.h_walls and state.b_sticks > 0:
-                    return ("h_wall", col, wall_row)
-            if dcol == -1:
-                wall_col = col - 1
-                if 0 <= wall_col < 5 and (wall_col, row) not in state.v_walls and state.b_sticks > 0:
-                    return ("v_wall", wall_col, row)
-            if dcol == 1 and (col, row) not in state.v_walls and state.b_sticks > 0:
-                return ("v_wall", col, row)
-    return None
+    score += state.b_sticks * 5
+
+    return score
 
 
 def pick_action_blocker(state, verbose=False):
-    if state.b_sticks > 0:
-        wall = _block_opponent_path(state)
-        if wall is not None:
-            if verbose:
-                print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
-                      f"blocking opp with {_format_move(wall)}")
-            return wall
-
-    bfs = _move_toward_goal(state)
-    if bfs is not None:
-        if verbose:
-            print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
-                  f"moving with {_format_move(bfs)}")
-        return bfs
-
     moves = state.legal_moves(nearby_only=True)
+    if not moves:
+        return None
+
+    best_move = None
+    best_score = -999999
+
+    for move in moves:
+        next_state = state.apply(move)
+        score = _evaluate_state(next_state)
+        if score > best_score:
+            best_score = score
+            best_move = move
+
     if verbose:
         print(f"  blocker from {_format_position(state.b_col, state.b_row)}: "
-              f"fallback ({len(moves)} moves)")
-    if moves:
-        return random.choice(moves)
-    return None
+              f"best is {_format_move(best_move)} (score={best_score})")
+
+    return best_move
 
 
 root = tk.Tk()
