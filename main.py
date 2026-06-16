@@ -309,39 +309,113 @@ def _format_position(col, row):
 
 
 def _evaluate_state(state):
-    """Score a game state from the bot's perspective. Higher is better."""
-    score = 0
-
     bot_path = _bfs_path(state, is_bot=True)
     player_path = _bfs_path(state, is_bot=False)
-
-    if bot_path and player_path:
-        score += (len(player_path) - len(bot_path)) * 15
+    score = 0
 
     if not player_path:
-        score += 200
-
+        return 500
     if not bot_path:
-        score -= 300
+        return -500
 
-    if player_path and len(player_path) > 1:
-        next_col, next_row = player_path[1]
-        if next_col != state.p_col or next_row != state.p_row:
-            if (state.p_col, state.p_row) in state.h_walls:
-                score += 10
-            if (next_col, next_row) in state.h_walls and next_row == state.p_row + 1:
-                score += 10
-            dcol = next_col - state.p_col
-            if dcol == 1 and (state.p_col, state.p_row) in state.v_walls:
-                score += 10
-            if dcol == -1 and (next_col, state.p_row) in state.v_walls:
-                score += 10
+    path_diff = len(player_path) - len(bot_path)
+    score += path_diff * 30
+
+    bot_dist = 5 - state.b_row
+    player_dist = state.p_row
+    score += (player_dist - bot_dist) * 25
+
+    if player_path and len(player_path) <= 2:
+        score -= 300
+    if bot_path and len(bot_path) <= 2:
+        score += 300
+
+    if state.p_row >= 4:
+        score -= 80
+    if state.b_row <= 1:
+        score += 80
+
+    if state.to_move:
+        score += 20
+    else:
+        score -= 20
+
+    score += state.b_sticks * 8
+    score -= state.p_sticks * 12
+
+    score += state.b_destroys * 5
+    score -= state.p_destroys * 8
+
+    if player_path:
+        for col, row in player_path[:3]:
+            if (col, row) in state.h_walls:
+                score += 12
+            if col > 0 and (col - 1, row) in state.v_walls:
+                score += 12
 
     return score
 
 
+def _strategic_walls(state):
+    player_path = _bfs_path(state, is_bot=False)
+    if not player_path:
+        return []
+
+    walls = []
+    seen = set()
+    for i in range(len(player_path) - 1):
+        c1, r1 = player_path[i]
+        c2, r2 = player_path[i + 1]
+        if r2 > r1:
+            key = ("h", c1, r1)
+            if key not in seen and (c1, r1) not in state.h_walls:
+                seen.add(key)
+                walls.append(("h_wall", c1, r1))
+        elif c2 > c1:
+            key = ("v", c1, r1)
+            if key not in seen and (c1, r1) not in state.v_walls:
+                seen.add(key)
+                walls.append(("v_wall", c1, r1))
+        elif c2 < c1:
+            key = ("v", c2, r1)
+            if key not in seen and (c2, r1) not in state.v_walls:
+                seen.add(key)
+                walls.append(("v_wall", c2, r1))
+
+    for col in range(6):
+        for row in range(5):
+            key = ("h", col, row)
+            if key not in seen and (col, row) not in state.h_walls:
+                seen.add(key)
+                if abs(col - state.p_col) <= 2 and abs(row - state.p_row) <= 2:
+                    walls.append(("h_wall", col, row))
+    for col in range(5):
+        for row in range(6):
+            key = ("v", col, row)
+            if key not in seen and (col, row) not in state.v_walls:
+                seen.add(key)
+                if abs(col - state.p_col) <= 2 and abs(row - state.p_row) <= 2:
+                    walls.append(("v_wall", col, row))
+
+    return walls
+
+
 def pick_action_blocker(state, verbose=True):
-    moves = state.legal_moves(nearby_only=True)
+    moves = []
+    for m in state.legal_moves(nearby_only=True):
+        if m[0] in ("up", "down", "left", "right"):
+            moves.append(m)
+
+    if state.b_sticks > 0:
+        moves.extend(_strategic_walls(state))
+
+    if state.b_destroys > 0:
+        for m in state.legal_moves(nearby_only=True):
+            if m[0] in ("destroy_h", "destroy_v"):
+                moves.append(m)
+
+    if not moves:
+        moves = state.legal_moves(nearby_only=True)
     if not moves:
         return None
 
