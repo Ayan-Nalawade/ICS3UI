@@ -505,10 +505,6 @@ class Board:
         canvas.create_text(panel_center_x - 90, panel_center_y + 350, text="Destroys:", font=("Helvetica", 16, "bold"), anchor="w", tags="destroytxt", fill="white")
         canvas.create_text(panel_center_x + 75, panel_center_y + 350, text=str(self.player_destroys), font=("Helvetica", 16, "bold"), anchor="w", tags="destroysval", fill="#FF5722")
 
-        canvas.create_text(panel_center_x, panel_center_y + 400, text="Instructions", font=("Helvetica", 18, "underline", "bold"), tags="instructions", fill="#4CAF50")
-        canvas.create_text(panel_center_x, panel_center_y + 440, text="Get to the other side before the bot, click on the squares to place vines and block the bot",
-                      font=("Helvetica", 12), tags="instructions", fill="#CCE5CC", width=170)
-
         self._draw_powerups()
 
     def __piece_location(self, is_player: bool):
