@@ -470,6 +470,8 @@ class Board:
         self.wall_colors = {}
         self.player_destroys = 2
         self.bot_destroys = 2
+        self._instr_shown = False
+        self.player_turn = True
         self.win_frame = 0
         self.win_type = None
         self.win_particles = []
@@ -782,6 +784,8 @@ class Board:
                            line_x, (y_grid + 1) * self.square_height, color)
 
     def _destroy_wall(self, event):
+        if not self.player_turn:
+            return
         grid_x = event.x // self.square_width
         grid_y = event.y // self.square_height
         if grid_x >= 6 or grid_y >= 6 or grid_x < 0 or grid_y < 0 or self.won:
@@ -828,6 +832,7 @@ class Board:
             self.player_destroys -= 1
             self._redraw_all_walls()
             canvas.itemconfigure("destroysval", text=str(self.player_destroys))
+            self.player_turn = False
 
     def _draw_leaf_shape(self, x1, y1, angle, size, color, outline_color, tag="wall"):
         angle_rad = math.radians(angle)
@@ -1442,9 +1447,10 @@ class Board:
 
         self.bot_move_log = ""
         self._blocker_pick_action()
+        self.player_turn = True
 
     def on_mouse_click(self, event):
-        if self.won or self.sticks_left <= 0:
+        if self.won or self.sticks_left <= 0 or not self.player_turn:
             return
         
         grid_x = event.x // self.square_width
@@ -1507,28 +1513,187 @@ class Board:
         if placed:
             self.sticks_left -= 1
             canvas.itemconfigure("sticksval", text=str(self.sticks_left))
+            self.player_turn = False
 
     def onplayerclick(self, event):
+        if not self.player_turn:
+            return
         key = event.keysym.lower()
         if key in ("up", "down", "left", "right"):
-            self.validate_move(key, True)
+            if self.validate_move(key, True) == 0:
+                self.player_turn = False
+
+    def _draw_start_screen(self):
+        canvas.delete("menu")
+        canvas.delete("instructions_overlay")
+
+        c1 = WIDTH + 200
+        c2 = c1 // 2
+        canvas.create_rectangle(0, 0, c1, HEIGHT,
+                               fill="#0A1A08", tags="menu")
+
+        for i in range(6):
+            x = randint(20, c1 - 20)
+            vine_len = randint(80, 160)
+            l1 = []
+            for j in range(14):
+                t = j / 14
+                sway = math.sin(t * math.pi * 3) * 15 * t
+                l1.extend([x + sway, -10 + vine_len * t])
+            canvas.create_line(*l1, fill="#1B5E20", width=3, smooth=True, tags="menu")
+            l2, l3 = l1[-2], l1[-1]
+            for _ in range(2):
+                self._draw_leaf_shape(
+                    l2 + randint(-8, 8), l3 - 5,
+                    90 + randint(-30, 30), randint(10, 16),
+                    choice(["#2E7D32", "#388E3C"]), "#0B3D0B", tag="menu"
+                )
+
+        title_y = HEIGHT // 3 - 20
+        canvas.create_text(c2 + 3, title_y + 3, text="JUNGLE RUSH",
+                          font=("Helvetica", 52, "bold"), fill="#0B3D0B", tags="menu")
+        canvas.create_text(c2, title_y, text="JUNGLE RUSH",
+                          font=("Helvetica", 52, "bold"), fill="#4CAF50", tags="menu")
+
+        self._draw_leaf_shape(c2 - 210, title_y - 6, 0, 18, "#2E7D32", "#0B3D0B", tag="menu")
+        self._draw_leaf_shape(c2 + 210, title_y - 6, 180, 18, "#2E7D32", "#0B3D0B", tag="menu")
+
+        canvas.create_text(c2, title_y + 55, text="Outrun the Bot",
+                          font=("Helvetica", 18), fill="#8BC34A", tags="menu")
+
+        btn_w, btn_h = 240, 56
+        start_y = title_y + 120
+        self.start_btn = (c2 - btn_w // 2, start_y, c2 + btn_w // 2, start_y + btn_h)
+        canvas.create_rectangle(*self.start_btn, fill="#1B5E20", outline="#4CAF50",
+                               width=3, tags="menu")
+        for side in [-1, 1]:
+            b1 = c2 + side * (btn_w // 2 + 4)
+            b2 = start_y + btn_h // 2
+            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#388E3C", "#0B3D0B", tag="menu")
+        canvas.create_text(c2, start_y + btn_h // 2, text="Start Game",
+                          font=("Helvetica", 22, "bold"), fill="white", tags="menu")
+
+        instr_y = start_y + 75
+        self.instr_btn = (c2 - btn_w // 2, instr_y, c2 + btn_w // 2, instr_y + btn_h)
+        canvas.create_rectangle(*self.instr_btn, fill="#0F3D0F", outline="#4CAF50",
+                               width=3, tags="menu")
+        for side in [-1, 1]:
+            b1 = c2 + side * (btn_w // 2 + 4)
+            b2 = instr_y + btn_h // 2
+            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#2E7D32", "#0B3D0B", tag="menu")
+        canvas.create_text(c2, instr_y + btn_h // 2, text="How to Play",
+                          font=("Helvetica", 22, "bold"), fill="#A5D6A7", tags="menu")
+
+        for _ in range(4):
+            x = randint(30, c1 - 30)
+            y = HEIGHT - randint(10, 30)
+            for _ in range(5):
+                o1 = randint(-20, 20)
+                o2 = randint(-10, 6)
+                s1 = randint(8, 16)
+                canvas.create_oval(x + o1 - s1, y + o2 - s1, x + o1 + s1, y + o2 + s1,
+                             fill="#1B5E20", outline="#0B3D0B", tags="menu")
+
+    def _on_menu_click(self, event):
+        if self._instr_shown:
+            self._toggle_instructions()
+            return
+        x, y = event.x, event.y
+        x1, y1, x2, y2 = self.start_btn
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            self._start_game()
+            return
+        x1, y1, x2, y2 = self.instr_btn
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            self._toggle_instructions()
+
+    def _toggle_instructions(self):
+        if self._instr_shown:
+            canvas.delete("instructions_overlay")
+            self._instr_shown = False
+            return
+        self._instr_shown = True
+        c1 = WIDTH // 2
+        c2 = WIDTH + 200
+
+        canvas.create_rectangle(10, 10, c2 - 10, HEIGHT - 10,
+                               fill="#0A1A08", outline="#2E7D32", width=4,
+                               tags="instructions_overlay")
+
+        for i in range(4):
+            x = randint(30, c2 - 30)
+            vine_len = randint(100, 180)
+            l1 = []
+            for j in range(12):
+                t = j / 12
+                sway = math.sin(t * math.pi * 4) * 12 * t
+                l1.extend([x + sway, -5 + vine_len * t])
+            canvas.create_line(*l1, fill="#1B5E20", width=2, smooth=True,
+                              tags="instructions_overlay")
+            l2, l3 = l1[-2], l1[-1]
+            self._draw_leaf_shape(l2 + randint(-5, 5), l3 - 5,
+                                 90 + randint(-20, 20), randint(8, 14),
+                                 choice(["#2E7D32", "#388E3C"]), "#0B3D0B",
+                                 tag="instructions_overlay")
+
+        for i in range(3):
+            b1 = 20 + i * 60
+            y = 20 + i * 40
+            self._draw_leaf_shape(b1, y, 135 + i * 20, 12,
+                                 choice(["#1B5E20", "#2E7D32"]), "#0B3D0B",
+                                 tag="instructions_overlay")
+            self._draw_leaf_shape(c2 - b1, y, -45 - i * 20, 12,
+                                 choice(["#1B5E20", "#2E7D32"]), "#0B3D0B",
+                                 tag="instructions_overlay")
+
+        lines = [
+            "HOW TO PLAY",
+            "",
+            "Use ARROW KEYS to move your character.",
+            "Click on grid EDGES to place vines (walls).",
+            "Right-click a vine to DESTROY it.",
+            "",
+            "Reach the BOTTOM before the bot reaches the TOP.",
+            "Block the bot's path with vines.",
+            "",
+            "Collect CHESTS for power-ups:",
+            '  + = Extra vine         - = Erase all vines',
+            '  = = Split the map      # = Generate a maze',
+            "",
+            "Click anywhere to close."
+        ]
+        text = "\n".join(lines)
+        canvas.create_rectangle(60, 60, c2 - 60, HEIGHT - 60,
+                               fill="#0D1F0A", outline="#1B5E20", width=2,
+                               tags="instructions_overlay")
+        canvas.create_text(c1, HEIGHT // 2 - 10, text=text,
+                          font=("Helvetica", 15), fill="#CCE5CC",
+                          justify="center", tags="instructions_overlay")
+
+    def _start_game(self):
+        canvas.delete("menu")
+        canvas.delete("instructions_overlay")
+        self.show_notation()
+        self.draw_player(True, "C1", "C1", "down")
+        self.draw_player(False, "D6", "D6", "down")
+        self.draw_chests()
+        self.rightside()
+        self.bot()
+        self.check_win()
+        root.bind("<Key>", self.onplayerclick)
+        canvas.bind("<Button-1>", self.on_mouse_click)
+        canvas.bind("<Button-3>", self._destroy_wall)
+        canvas.focus_set()
+
 
 def RunGame():
     board = Board()
     board.draw_board()
     board.draw_jungle_ambient()
-    board.show_notation()
-    board.draw_player(True, "C1", "C1", "down")
-    board.draw_player(False, "D6", "D6", "down")
-    board.draw_chests()
-    board.rightside()
-    board.bot()
+    board._draw_start_screen()
     board.animate_jungle()
-    board.check_win()
-    root.bind("<Key>", board.onplayerclick)
-    canvas.bind("<Button-1>", board.on_mouse_click)
-    canvas.bind("<Button-3>", board._destroy_wall)
-    canvas.focus_set()
+    canvas.bind("<Button-1>", board._on_menu_click)
     root.mainloop()
+
 
 RunGame()
