@@ -1,3 +1,7 @@
+##############################
+# Jungle Run - A Python Game #
+# Developed by Ayan          #
+##############################
 import tkinter as tk
 import random
 import sys
@@ -400,7 +404,7 @@ def _strategic_walls(state):
     return walls
 
 
-def pick_action_blocker(state, verbose=True):
+def pick_action_hard(state, verbose=True):
     moves = []
     for m in state.legal_moves(nearby_only=True):
         if m[0] in ("up", "down", "left", "right"):
@@ -442,10 +446,38 @@ def pick_action_blocker(state, verbose=True):
             best_move = move
 
     if verbose:
-        print(f"DEBUG:  blocker from {_format_position(state.b_col, state.b_row)}: "
+        print(f"DEBUG:  hard from {_format_position(state.b_col, state.b_row)}: "
               f"best is {_format_move(best_move)} (score={best_score})")
 
     return best_move
+
+
+def pick_action_easy(state, verbose=True):
+    moves = state.legal_moves(nearby_only=True)
+    if not moves:
+        return None
+
+    dir_moves = [m for m in moves if m[0] in ("up", "down", "left", "right")]
+    wall_moves = [m for m in moves if m[0] in ("h_wall", "v_wall")]
+    destroy_moves = [m for m in moves if m[0] in ("destroy_h", "destroy_v")]
+
+    if random.random() < 0.35 and dir_moves:
+        move = choice(dir_moves)
+    elif random.random() < 0.5 and wall_moves and state.b_sticks > 0:
+        move = choice(wall_moves)
+    elif destroy_moves and state.b_destroys > 0:
+        move = choice(destroy_moves)
+    else:
+        move = choice(moves)
+
+    if verbose:
+        print(f"DEBUG:  easy from {_format_position(state.b_col, state.b_row)}: "
+              f"{_format_move(move)}")
+
+    return move
+
+
+pick_action_blocker = pick_action_hard
 
 
 root = tk.Tk()
@@ -550,6 +582,7 @@ class Board:
         self.win_type = None
         self.win_particles = []
         self.bot_move_log = ""
+        self.difficulty = "hard"
         
     def rightside(self): 
         panel_top = 50
@@ -1447,7 +1480,10 @@ class Board:
 
     def _blocker_pick_action(self):
         state = self._build_ml_state()
-        move = pick_action_blocker(state, verbose=True)
+        if self.difficulty == "easy":
+            move = pick_action_easy(state, verbose=True)
+        else:
+            move = pick_action_hard(state, verbose=True)
         if move is None:
             print("DEBUG:  blocker: no move returned")
             return False
@@ -1624,9 +1660,9 @@ class Board:
                 )
 
         title_y = HEIGHT // 3 - 20
-        canvas.create_text(c2 + 3, title_y + 3, text="JUNGLE RUSH",
+        canvas.create_text(c2 + 3, title_y + 3, text="Jungle Run by Ayan",
                           font=("Helvetica", 52, "bold"), fill="#0B3D0B", tags="menu")
-        canvas.create_text(c2, title_y, text="JUNGLE RUSH",
+        canvas.create_text(c2, title_y, text="Jungle Run by Ayan",
                           font=("Helvetica", 52, "bold"), fill="#4CAF50", tags="menu")
 
         self._draw_leaf_shape(c2 - 210, title_y - 6, 0, 18, "#2E7D32", "#0B3D0B", tag="menu")
@@ -1637,17 +1673,29 @@ class Board:
 
         btn_w, btn_h = 240, 56
         start_y = title_y + 120
-        self.start_btn = (c2 - btn_w // 2, start_y, c2 + btn_w // 2, start_y + btn_h)
-        canvas.create_rectangle(*self.start_btn, fill="#1B5E20", outline="#4CAF50",
+
+        self.easy_btn = (c2 - btn_w // 2, start_y, c2 + btn_w // 2, start_y + btn_h)
+        canvas.create_rectangle(*self.easy_btn, fill="#1B5E20", outline="#4CAF50",
                                width=3, tags="menu")
         for side in [-1, 1]:
             b1 = c2 + side * (btn_w // 2 + 4)
             b2 = start_y + btn_h // 2
             self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#388E3C", "#0B3D0B", tag="menu")
-        canvas.create_text(c2, start_y + btn_h // 2, text="Start Game",
+        canvas.create_text(c2, start_y + btn_h // 2, text="Easy Mode",
+                          font=("Helvetica", 22, "bold"), fill="#A5D6A7", tags="menu")
+
+        hard_y = start_y + 75
+        self.hard_btn = (c2 - btn_w // 2, hard_y, c2 + btn_w // 2, hard_y + btn_h)
+        canvas.create_rectangle(*self.hard_btn, fill="#1B5E20", outline="#FFD700",
+                               width=3, tags="menu")
+        for side in [-1, 1]:
+            b1 = c2 + side * (btn_w // 2 + 4)
+            b2 = hard_y + btn_h // 2
+            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#2E7D32", "#0B3D0B", tag="menu")
+        canvas.create_text(c2, hard_y + btn_h // 2, text="Hard Mode",
                           font=("Helvetica", 22, "bold"), fill="white", tags="menu")
 
-        instr_y = start_y + 75
+        instr_y = hard_y + 75
         self.instr_btn = (c2 - btn_w // 2, instr_y, c2 + btn_w // 2, instr_y + btn_h)
         canvas.create_rectangle(*self.instr_btn, fill="#0F3D0F", outline="#4CAF50",
                                width=3, tags="menu")
@@ -1673,9 +1721,13 @@ class Board:
             self._toggle_instructions()
             return
         x, y = event.x, event.y
-        x1, y1, x2, y2 = self.start_btn
+        x1, y1, x2, y2 = self.easy_btn
         if x1 <= x <= x2 and y1 <= y <= y2:
-            self._start_game()
+            self._start_game("easy")
+            return
+        x1, y1, x2, y2 = self.hard_btn
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            self._start_game("hard")
             return
         x1, y1, x2, y2 = self.instr_btn
         if x1 <= x <= x2 and y1 <= y <= y2:
@@ -1744,7 +1796,8 @@ class Board:
                           font=("Helvetica", 15), fill="#CCE5CC",
                           justify="center", tags="instructions_overlay")
 
-    def _start_game(self):
+    def _start_game(self, difficulty="hard"):
+        self.difficulty = difficulty
         canvas.delete("menu")
         canvas.delete("instructions_overlay")
         self.show_notation()
@@ -1768,6 +1821,5 @@ def RunGame():
     board.animate_jungle()
     canvas.bind("<Button-1>", board._on_menu_click)
     root.mainloop()
-
-
+    
 RunGame()
