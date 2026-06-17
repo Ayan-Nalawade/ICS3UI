@@ -1680,7 +1680,11 @@ class Board:
         for side in [-1, 1]:
             b1 = c2 + side * (btn_w // 2 + 4)
             b2 = start_y + btn_h // 2
-            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#388E3C", "#0B3D0B", tag="menu")
+            if side < 0:
+                a1 = 90
+            else:
+                a1 = -90
+            self._draw_leaf_shape(b1, b2, a1, 14, "#388E3C", "#0B3D0B", tag="menu")
         canvas.create_text(c2, start_y + btn_h // 2, text="Easy Mode",
                           font=("Helvetica", 22, "bold"), fill="#A5D6A7", tags="menu")
 
@@ -1691,7 +1695,11 @@ class Board:
         for side in [-1, 1]:
             b1 = c2 + side * (btn_w // 2 + 4)
             b2 = hard_y + btn_h // 2
-            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#2E7D32", "#0B3D0B", tag="menu")
+            if side < 0:
+                a1 = 90
+            else:
+                a1 = -90
+            self._draw_leaf_shape(b1, b2, a1, 14, "#2E7D32", "#0B3D0B", tag="menu")
         canvas.create_text(c2, hard_y + btn_h // 2, text="Hard Mode",
                           font=("Helvetica", 22, "bold"), fill="white", tags="menu")
 
@@ -1702,7 +1710,11 @@ class Board:
         for side in [-1, 1]:
             b1 = c2 + side * (btn_w // 2 + 4)
             b2 = instr_y + btn_h // 2
-            self._draw_leaf_shape(b1, b2, 90 if side < 0 else -90, 14, "#2E7D32", "#0B3D0B", tag="menu")
+            if side < 0:
+                a1 = 90
+            else:
+                a1 = -90
+            self._draw_leaf_shape(b1, b2, a1, 14, "#2E7D32", "#0B3D0B", tag="menu")
         canvas.create_text(c2, instr_y + btn_h // 2, text="How to Play",
                           font=("Helvetica", 22, "bold"), fill="#A5D6A7", tags="menu")
 
@@ -1753,7 +1765,10 @@ class Board:
         for side in [-1, 1]:
             for dy in [-1, 1]:
                 y = HEIGHT // 2 + dy * 100
-                x = (60 if side < 0 else cw - 60) + side * 6
+                if side < 0:
+                    x = 60 + side * 6
+                else:
+                    x = cw - 60 + side * 6
                 self._draw_leaf_shape(x, y, 90 + side * 45 + dy * 20,
                                      14, choice(["#1B5E20", "#2E7D32"]),
                                      "#0B3D0B", tag="instructions_overlay")
@@ -1844,5 +1859,6 @@ def RunGame():
     board.animate_jungle()
     canvas.bind("<Button-1>", board._on_menu_click)
     root.mainloop()
-    
+
+
 RunGame()
