@@ -1739,62 +1739,85 @@ class Board:
             self._instr_shown = False
             return
         self._instr_shown = True
-        c1 = WIDTH // 2
-        c2 = WIDTH + 200
+        cx = (WIDTH + 200) // 2
+        cw = WIDTH + 200
 
-        canvas.create_rectangle(10, 10, c2 - 10, HEIGHT - 10,
+        canvas.create_rectangle(10, 10, cw - 10, HEIGHT - 10,
                                fill="#0A1A08", outline="#2E7D32", width=4,
                                tags="instructions_overlay")
 
-        for i in range(4):
-            x = randint(30, c2 - 30)
-            vine_len = randint(100, 180)
-            l1 = []
-            for j in range(12):
-                t = j / 12
-                sway = math.sin(t * math.pi * 4) * 12 * t
-                l1.extend([x + sway, -5 + vine_len * t])
-            canvas.create_line(*l1, fill="#1B5E20", width=2, smooth=True,
-                              tags="instructions_overlay")
-            l2, l3 = l1[-2], l1[-1]
-            self._draw_leaf_shape(l2 + randint(-5, 5), l3 - 5,
-                                 90 + randint(-20, 20), randint(8, 14),
-                                 choice(["#2E7D32", "#388E3C"]), "#0B3D0B",
-                                 tag="instructions_overlay")
+        inner = (60, 60, cw - 60, HEIGHT - 60)
+        canvas.create_rectangle(*inner, fill="#0D1F0A", outline="#1B5E20",
+                                width=2, tags="instructions_overlay")
 
-        for i in range(3):
-            b1 = 20 + i * 60
-            y = 20 + i * 40
-            self._draw_leaf_shape(b1, y, 135 + i * 20, 12,
-                                 choice(["#1B5E20", "#2E7D32"]), "#0B3D0B",
-                                 tag="instructions_overlay")
-            self._draw_leaf_shape(c2 - b1, y, -45 - i * 20, 12,
-                                 choice(["#1B5E20", "#2E7D32"]), "#0B3D0B",
-                                 tag="instructions_overlay")
+        for side in [-1, 1]:
+            for dy in [-1, 1]:
+                y = HEIGHT // 2 + dy * 100
+                x = (60 if side < 0 else cw - 60) + side * 6
+                self._draw_leaf_shape(x, y, 90 + side * 45 + dy * 20,
+                                     14, choice(["#1B5E20", "#2E7D32"]),
+                                     "#0B3D0B", tag="instructions_overlay")
 
-        lines = [
-            "HOW TO PLAY",
-            "",
-            "Use ARROW KEYS to move your character.",
-            "Click on grid EDGES to place vines (walls).",
-            "Right-click a vine to DESTROY it.",
-            "",
-            "Reach the BOTTOM before the bot reaches the TOP.",
-            "Block the bot's path with vines.",
-            "",
-            "Collect CHESTS for power-ups:",
-            '  + = Extra vine         - = Erase all vines',
-            '  = = Split the map      # = Generate a maze',
-            "",
-            "Click anywhere to close."
+        ty = 90
+        self._draw_leaf_shape(cx - 195, ty + 4, 0, 18, "#2E7D32", "#0B3D0B", tag="instructions_overlay")
+        canvas.create_text(cx, ty, text="HOW TO PLAY",
+                          font=("Helvetica", 36, "bold"), fill="#4CAF50",
+                          tags="instructions_overlay")
+        self._draw_leaf_shape(cx + 195, ty + 4, 180, 18, "#2E7D32", "#0B3D0B", tag="instructions_overlay")
+
+        canvas.create_line(cx - 140, ty + 45, cx + 140, ty + 45,
+                          fill="#1B5E20", width=1, tags="instructions_overlay")
+
+        sections = [
+            ("Movement", ["Use ARROW KEYS to move your character."], "#FF9800"),
+            ("Vines", ["Click grid EDGES to place vines.", "Right-click a vine to destroy it."], "#4CAF50"),
+            ("Goal", ["Reach the bottom before the bot", "reaches the top. Block it with vines."], "#00BCD4"),
         ]
-        text = "\n".join(lines)
-        canvas.create_rectangle(60, 60, c2 - 60, HEIGHT - 60,
-                               fill="#0D1F0A", outline="#1B5E20", width=2,
-                               tags="instructions_overlay")
-        canvas.create_text(c1, HEIGHT // 2 - 10, text=text,
-                          font=("Helvetica", 15), fill="#CCE5CC",
-                          justify="center", tags="instructions_overlay")
+        s1 = ty + 75
+        for title, body_lines, color in sections:
+            x = cx - 15
+            canvas.create_oval(x - 5, s1 - 5, x + 5, s1 + 5, fill=color,
+                              outline="", tags="instructions_overlay")
+            canvas.create_text(x - 18, s1, text=title,
+                              font=("Helvetica", 16, "bold"), fill=color,
+                              anchor="e", tags="instructions_overlay")
+            for line in body_lines:
+                s1 += 22
+                canvas.create_text(cx, s1, text=line,
+                                  font=("Helvetica", 14), fill="#CCE5CC",
+                                  tags="instructions_overlay")
+            s1 += 28
+
+        s1 += 12
+        canvas.create_line(cx - 130, s1, cx + 130, s1,
+                          fill="#1B5E20", width=1, tags="instructions_overlay")
+        s1 += 28
+        canvas.create_text(cx, s1, text="CHEST POWER-UPS",
+                          font=("Helvetica", 16, "bold"), fill="#FFD700",
+                          tags="instructions_overlay")
+        s1 += 36
+        pups = [
+            ("+", "Extra vine", "#4CAF50"),
+            ("-", "Erase all vines", "#F44336"),
+            ("=", "Split the map", "#9C27B0"),
+            ("#", "Generate a maze", "#FF5722"),
+        ]
+        x1 = cx - 130
+        for sym, desc, color in pups:
+            s1 += 30
+            canvas.create_oval(x1 - 10, s1 - 10, x1 + 10, s1 + 10,
+                              fill=color, outline="", tags="instructions_overlay")
+            canvas.create_text(x1, s1, text=sym, font=("Helvetica", 13, "bold"),
+                              fill="white", tags="instructions_overlay")
+            canvas.create_text(x1 + 22, s1, text=desc, font=("Helvetica", 14),
+                              fill="#CCE5CC", anchor="w", tags="instructions_overlay")
+
+        s2 = HEIGHT - 55
+        canvas.create_line(cx - 100, s2, cx + 100, s2,
+                          fill="#1B5E20", width=1, tags="instructions_overlay")
+        canvas.create_text(cx, s2 + 18, text="Click anywhere to close",
+                          font=("Helvetica", 14, "italic"), fill="#8BC34A",
+                          tags="instructions_overlay")
 
     def _start_game(self, difficulty="hard"):
         self.difficulty = difficulty
