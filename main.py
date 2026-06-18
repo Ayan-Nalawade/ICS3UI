@@ -538,6 +538,7 @@ root = tk.Tk()
 
 WIDTH = root.winfo_screenwidth()
 HEIGHT = root.winfo_screenheight()
+print(f"{HEIGHT}x{WIDTH}")
 if WIDTH > 1000: 
     WIDTH = 912
 if HEIGHT > 1000: 
@@ -642,9 +643,9 @@ class Board:
         self._instr_shown = False  # instructions overlay toggle
         self.player_turn = True  # True=player can act, False=waiting for bot
         self.win_frame = 0
-        self.win_type = None  # "player" or "bot"
+        self.win_type = None  # "player", "bot", or "draw"
         self.win_particles = []
-        self.bot_move_log = ""
+        self.bot_move_log = []
         self.difficulty = "hard"
         self.frame_count = 0
         self.fps = 0
@@ -1425,6 +1426,31 @@ class Board:
                 root.after(50, self.check_win)
             return
 
+        try:
+            state = self._build_ml_state()
+            player_path = _bfs_path(state, is_bot=False)
+            bot_path = _bfs_path(state, is_bot=True)
+
+            player_truly_stuck = self.player_destroys <= 0 and not player_path
+
+            bot_state = state.copy()
+            bot_state.to_move = True
+            bot_moves = bot_state.legal_moves(nearby_only=False)
+            bot_repeating = False
+            if len(self.bot_move_log) >= 6:
+                recent = self.bot_move_log[-6:]
+                bot_repeating = recent == recent[:2] * 3 or recent == recent[:3] * 2
+            bot_stuck_or_blocked = (len(bot_moves) == 0) or (not bot_path)
+
+            if player_truly_stuck and (bot_stuck_or_blocked or bot_repeating):
+                self.won = True
+                self.win_frame = 0
+                self.win_type = "draw"
+                self._draw_win_screen()
+                return
+        except Exception:
+            pass
+
         one, two = location[0], location[1]
         if self.check_who:
             self.check_who = False
@@ -1447,10 +1473,13 @@ class Board:
     def _draw_win_screen(self):
         # overlay the entire canvas with a victory/defeat screen and "Play Again" button
         is_win = self.win_type == "player"
+        is_draw = self.win_type == "draw"
         canvas_width = WIDTH + 200
 
         if is_win:
             overlay = "#0A1F05"  # dark green for victory
+        elif is_draw:
+            overlay = "#0B1320"  # dark blue for draw
         else:
             overlay = "#1F0505"  # dark red for defeat
         canvas.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
@@ -1459,6 +1488,10 @@ class Board:
             title = "VICTORY"
             title_color = "#FFD700"
             shadow_color = "#5C3A00"
+        elif is_draw:
+            title = "DRAW"
+            title_color = "#66CCFF"
+            shadow_color = "#0A3D62"
         else:
             title = "DEFEAT"
             title_color = "#FF3333"
@@ -1473,6 +1506,8 @@ class Board:
 
         if is_win:
             subtitle = "You reached the other side!"
+        elif is_draw:
+            subtitle = "No one can move or reach the end."
         else:
             subtitle = "The bot beat you!"
         canvas.create_text(x1, y1 + 60, text=subtitle,
@@ -1525,6 +1560,7 @@ class Board:
     def _animate_win(self):
         self.win_frame += 1
         is_win = self.win_type == "player"
+        is_draw = self.win_type == "draw"
         canvas_width = WIDTH + 200
         x1 = canvas_width // 2
         y1 = HEIGHT // 2 - 30
@@ -1535,6 +1571,8 @@ class Board:
         intensity = int(60 * pulse)
         if is_win:
             glow_color = f"#{intensity:02x}{int(intensity*0.85):02x}00"
+        elif is_draw:
+            glow_color = f"#00{int(intensity*0.7):02x}{intensity:02x}"
         else:
             glow_color = f"#{intensity:02x}0000"
         canvas.create_oval(x1 - glow_radius, y1 - glow_radius,
@@ -1661,8 +1699,26 @@ class Board:
             return
         root.after(1000, self.bot)
 
-        self.bot_move_log = ""
+        state_before = self._build_ml_state()
+        before_pos = (state_before.b_col, state_before.b_row)
+        before_h = set(state_before.h_walls)
+        before_v = set(state_before.v_walls)
         self._blocker_pick_action()
+        state_after = self._build_ml_state()
+        after_pos = (state_after.b_col, state_after.b_row)
+
+        if after_pos != before_pos:
+            move_sig = f"move:{before_pos}->{after_pos}"
+        elif state_after.h_walls != before_h:
+            move_sig = f"h:{sorted(state_after.h_walls ^ before_h)}"
+        elif state_after.v_walls != before_v:
+            move_sig = f"v:{sorted(state_after.v_walls ^ before_v)}"
+        else:
+            move_sig = "none"
+
+        self.bot_move_log.append(move_sig)
+        if len(self.bot_move_log) > 12:
+            self.bot_move_log = self.bot_move_log[-12:]
         self.player_turn = True
 
     def on_mouse_click(self, event):
