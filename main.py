@@ -4,6 +4,10 @@
 ##############################
 # Used Gemini to make the character sprites using Image gen
 # As part of the 1 AI feature allowed
+# Commit history: https://github.com/Ayan-Nalawade/ICS3UI/commits/CS-Final/?after=e3b0db1b1ed9787b7209366711c3bcbd33980cca+34#:~:text=Tue%20Jun%202%2020%3A06%3A12%20EDT%202026%3A%20Setup%20basic%20board%20and%20the%20bot%26player%20%27sprites%27
+# https://github.com/Ayan-Nalawade/ICS3UI/tree/CS-Final
+
+
 import tkinter as tk
 import random
 import sys
@@ -534,7 +538,6 @@ root = tk.Tk()
 
 WIDTH = root.winfo_screenwidth()
 HEIGHT = root.winfo_screenheight()
-print(f"{HEIGHT}x{WIDTH}")
 if WIDTH > 1000: 
     WIDTH = 912
 if HEIGHT > 1000: 
