@@ -12,6 +12,7 @@ from random import randint, choice, uniform, shuffle
 from PIL import Image, ImageTk
 import numpy as np
 from collections import deque
+import time
 
 
 # --- Simulation state for AI search ---
@@ -642,6 +643,9 @@ class Board:
         self.win_particles = []
         self.bot_move_log = ""
         self.difficulty = "hard"
+        self.frame_count = 0
+        self.fps = 0
+        self.last_fps_time = time.time()
         
     def rightside(self): 
         panel_top = 50
@@ -1201,6 +1205,16 @@ class Board:
             return
         
         self.tick += 1
+        self.frame_count += 1
+        now = time.time()
+        if now - self.last_fps_time >= 0.5:
+            self.fps = int(self.frame_count / (now - self.last_fps_time))
+            self.frame_count = 0
+            self.last_fps_time = now
+        canvas.delete("fps")
+        canvas.create_text(WIDTH + 180, 10, text=f"FPS: {self.fps}",
+                          font=("Helvetica", 11), fill="#8BC34A",
+                          anchor="e", tags="fps")
 
         for firefly in self.fireflies:
             firefly["x"] += firefly["speed_x"]
