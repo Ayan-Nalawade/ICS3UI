@@ -14,6 +14,7 @@ import numpy as np
 from collections import deque
 
 
+# --- Simulation state for AI search ---
 class GameState:
     """Minimal game state for simulation."""
 
@@ -24,23 +25,23 @@ class GameState:
     )
 
     def __init__(self):
-        self.p_col = 2
-        self.p_row = 0
-        self.b_col = 3
-        self.b_row = 5
-        self.h_walls = set()
-        self.v_walls = set()
-        self.p_sticks = 4
-        self.b_sticks = 4
-        self.to_move = True
-        self.p_destroys = 2
-        self.b_destroys = 2
+        self.p_col = 2  # player starts column C (index 0-5)
+        self.p_row = 0  # player starts at bottom (row 1, index 0)
+        self.b_col = 3  # bot starts column D
+        self.b_row = 5  # bot starts at top (row 6, index 5)
+        self.h_walls = set()  # horizontal wall positions (col, row) in 0-5 coords
+        self.v_walls = set()  # vertical wall positions
+        self.p_sticks = 4  # player wall-placement charges
+        self.b_sticks = 4  # bot wall-placement charges
+        self.to_move = True  # True=bot, False=player (inverted for simulation)
+        self.p_destroys = 2  # player wall-destroy charges
+        self.b_destroys = 2  # bot wall-destroy charges
 
     def copy(self):
-        s = GameState()
+        s = GameState()  # fresh state (defaults will be overwritten below)
         s.p_col, s.p_row = self.p_col, self.p_row
         s.b_col, s.b_row = self.b_col, self.b_row
-        s.h_walls = set(self.h_walls)
+        s.h_walls = set(self.h_walls)  # shallow-copy wall sets
         s.v_walls = set(self.v_walls)
         s.p_sticks, s.b_sticks = self.p_sticks, self.b_sticks
         s.p_destroys, s.b_destroys = self.p_destroys, self.b_destroys
@@ -48,66 +49,75 @@ class GameState:
         return s
 
     def is_terminal(self):
+        # win condition: player reached top (row 5 index) or bot reached bottom (row 0)
         if self.p_row == 5 or self.b_row == 0:
             return True
+        # stuck condition: current player has no legal moves
         return len(self.legal_moves(nearby_only=True)) == 0
 
     def result(self):
+        # +1 bot wins, -1 player wins, 0 game continues
         if self.b_row == 0:
-            return 1.0
+            return 1.0  # bot reached goal
         if self.p_row == 5:
-            return -1.0
+            return -1.0  # player reached goal
         if not self.legal_moves(nearby_only=True):
+            # current player is stuck - they lose
             if self.to_move:
-                return -1.0
+                return -1.0  # bot is stuck -> player wins
             else:
-                return 1.0
+                return 1.0   # player is stuck -> bot wins
         return 0.0
 
     def _occupied(self, col, row):
+        # True if either piece occupies this cell
         return (col == self.p_col and row == self.p_row) or (
             col == self.b_col and row == self.b_row
         )
 
     def legal_moves(self, nearby_only=False):
+        # returns list of available (kind, ...) tuples for the current player
         moves = []
         is_bot = self.to_move
         if is_bot:
-            col = self.b_col
+            col = self.b_col  # bot position
             row = self.b_row
             sticks = self.b_sticks
         else:
-            col = self.p_col
+            col = self.p_col  # player position
             row = self.p_row
             sticks = self.p_sticks
 
+        # directional movement - check wall blocking and occupied target
         if (
             row < 5
-            and (col, row) not in self.h_walls
+            and (col, row) not in self.h_walls  # horizontal wall above
             and not self._occupied(col, row + 1)
         ):
             moves.append(("up",))
         if (
             row > 0
-            and (col, row - 1) not in self.h_walls
+            and (col, row - 1) not in self.h_walls  # horizontal wall below
             and not self._occupied(col, row - 1)
         ):
             moves.append(("down",))
         if (
             col > 0
-            and (col - 1, row) not in self.v_walls
+            and (col - 1, row) not in self.v_walls  # vertical wall left
             and not self._occupied(col - 1, row)
         ):
             moves.append(("left",))
         if (
             col < 5
-            and (col, row) not in self.v_walls
+            and (col, row) not in self.v_walls  # vertical wall right
             and not self._occupied(col + 1, row)
         ):
             moves.append(("right",))
 
+        # wall placement - filter by nearby range or all valid positions
         if sticks > 0:
             if nearby_only:
+                # only walls within 2 squares of either piece (for AI search speed)
                 player_row, player_col = self.p_row, self.p_col
                 bot_row, bot_col = self.b_row, self.b_col
                 seen = set()
@@ -116,17 +126,20 @@ class GameState:
                         for dcol in range(-2, 3):
                             wall_row = row + drow
                             wall_col = col + dcol
+                            # horizontal wall grid: 6 cols x 5 rows
                             if 0 <= wall_col < 6 and 0 <= wall_row < 5:
                                 key = ("h", wall_col, wall_row)
                                 if key not in seen and (wall_col, wall_row) not in self.h_walls:
                                     seen.add(key)
                                     moves.append(("h_wall", wall_col, wall_row))
+                            # vertical wall grid: 5 cols x 6 rows
                             if 0 <= wall_col < 5 and 0 <= wall_row < 6:
                                 key = ("v", wall_col, wall_row)
                                 if key not in seen and (wall_col, wall_row) not in self.v_walls:
                                     seen.add(key)
                                     moves.append(("v_wall", wall_col, wall_row))
             else:
+                # all valid wall positions on the board
                 for wall_col in range(6):
                     for wall_row in range(5):
                         if (wall_col, wall_row) not in self.h_walls:
@@ -136,6 +149,7 @@ class GameState:
                         if (wall_col, wall_row) not in self.v_walls:
                             moves.append(("v_wall", wall_col, wall_row))
 
+        # wall destruction - remove existing walls
         destroys = self.b_destroys if is_bot else self.p_destroys
         if destroys > 0:
             seen_destroy = set()
@@ -164,18 +178,20 @@ class GameState:
                         if (wall_col, wall_row) in self.v_walls:
                             moves.append(("destroy_v", wall_col, wall_row))
 
-        random.shuffle(moves)
+        random.shuffle(moves)  # randomize for variety in tie-breaking
         return moves
 
     def apply(self, move):
+        # return a new GameState with the move applied (simulation - does not mutate self)
         s = self.copy()
         kind = move[0]
 
+        # movement: flip coordinate based on whose turn it is
         if kind == "up":
             if s.to_move:
-                s.b_row += 1
+                s.b_row += 1  # bot moves up
             else:
-                s.p_row += 1
+                s.p_row += 1  # player moves up
         elif kind == "down":
             if s.to_move:
                 s.b_row -= 1
@@ -191,6 +207,7 @@ class GameState:
                 s.b_col += 1
             else:
                 s.p_col += 1
+        # wall placement: add wall, deduct stick charge
         elif kind == "h_wall":
             _, wall_col, wall_row = move
             s.h_walls.add((wall_col, wall_row))
@@ -205,6 +222,7 @@ class GameState:
                 s.b_sticks -= 1
             else:
                 s.p_sticks -= 1
+        # wall destruction: remove wall, deduct destroy charge
         elif kind == "destroy_h":
             _, wall_col, wall_row = move
             s.h_walls.discard((wall_col, wall_row))
@@ -220,39 +238,47 @@ class GameState:
             else:
                 s.p_destroys -= 1
 
-        s.to_move = not s.to_move
+        s.to_move = not s.to_move  # switch turn
         return s
 
     def encode(self):
+        # encode state as flat 134-float feature vector for potential ML use
         f = np.zeros(134, dtype=np.float32)
         idx = 0
+        # one-hot player position (36 entries)
         f[self.p_col * 6 + self.p_row] = 1.0
         idx += 36
+        # one-hot bot position (next 36 entries)
         f[idx + self.b_col * 6 + self.b_row] = 1.0
         idx += 36
+        # horizontal walls (30 entries)
         for wall_col in range(6):
             for wall_row in range(5):
                 if (wall_col, wall_row) in self.h_walls:
                     f[idx] = 1.0
                 idx += 1
+        # vertical walls (30 entries)
         for wall_col in range(5):
             for wall_row in range(6):
                 if (wall_col, wall_row) in self.v_walls:
                     f[idx] = 1.0
                 idx += 1
+        # remaining resources (normalized)
         f[idx] = self.p_sticks / 4.0
         idx += 1
         f[idx] = self.b_sticks / 4.0
         return f
 
 
+# --- Pathfinding (BFS) ---
 def _bfs_path(state, is_bot):
+    # BFS from current position to goal row; returns path or None if blocked
     if is_bot:
         start = (state.b_col, state.b_row)
-        goal_row = 0
+        goal_row = 0  # bot wants row 0 (bottom of board)
     else:
         start = (state.p_col, state.p_row)
-        goal_row = 5
+        goal_row = 5  # player wants row 5 (top of board)
 
     visited = {start}
     queue = deque()
@@ -266,25 +292,28 @@ def _bfs_path(state, is_bot):
         for drow, dcol in [(1, 0), (-1, 0), (0, -1), (0, 1)]:
             next_col, next_row = col + dcol, row + drow
             if next_col < 0 or next_col > 5 or next_row < 0 or next_row > 5:
-                continue
+                continue  # off board
             if (next_col, next_row) in visited:
                 continue
             if state._occupied(next_col, next_row):
-                continue
+                continue  # occupied by opponent
+            # wall checks: horizontal walls sit between rows, vertical between cols
             if drow == 1 and (col, row) in state.h_walls:
-                continue
+                continue  # horizontal wall above this cell
             if drow == -1 and (col, row - 1) in state.h_walls:
-                continue
+                continue  # horizontal wall below this cell
             if dcol == -1 and (col - 1, row) in state.v_walls:
-                continue
+                continue  # vertical wall to the left
             if dcol == 1 and (col, row) in state.v_walls:
-                continue
+                continue  # vertical wall to the right
             visited.add((next_col, next_row))
             queue.append(((next_col, next_row), path + [(next_col, next_row)]))
 
-    return None
+    return None  # no path found
 
 
+    # --- Move formatting utilities ---
+# convert internal move tuple to human-readable chess notation
 def _format_move(move):
     kind = move[0]
     if kind in ("up", "down", "left", "right"):
@@ -314,80 +343,97 @@ def _format_position(col, row):
     return f"{chr(ord('A') + col)}{row + 1}"
 
 
+# --- Bot AI: evaluation and move selection ---
 def _evaluate_state(state):
+    # heuristic evaluation: positive = good for bot, negative = good for player
     bot_path = _bfs_path(state, is_bot=True)
     player_path = _bfs_path(state, is_bot=False)
     score = 0
 
+    # hard fail if either side is completely blocked
     if not player_path:
-        return 500
+        return 500  # player can't reach goal - bot advantage
     if not bot_path:
-        return -500
+        return -500  # bot can't reach goal - player advantage
 
+    # path length difference: shorter path = better (weighted 30 per step)
     path_diff = len(player_path) - len(bot_path)
     score += path_diff * 30
 
+    # distance-to-goal urgency: who is closer to winning?
     bot_dist = 5 - state.b_row
     player_dist = state.p_row
     score += (player_dist - bot_dist) * 25
 
+    # imminent win/loss: within 2 steps of goal, large swing
     if player_path and len(player_path) <= 2:
-        score -= 300
+        score -= 300  # player close to winning
     if bot_path and len(bot_path) <= 2:
-        score += 300
+        score += 300  # bot close to winning
 
+    # proximity to goal lines
     if state.p_row >= 4:
-        score -= 80
+        score -= 80  # player is deep in bot's territory
     if state.b_row <= 1:
-        score += 80
+        score += 80  # bot is deep in player's territory
 
+    # turn advantage: moving first is slightly beneficial
     if state.to_move:
         score += 20
     else:
         score -= 20
 
+    # material: bot values player sticks 1.5x more than its own
     score += state.b_sticks * 8
     score -= state.p_sticks * 12
 
+    # destroy charges (less valuable than sticks)
     score += state.b_destroys * 5
     score -= state.p_destroys * 8
 
+    # bonus for walls blocking player's first 3 path steps
     if player_path:
         for col, row in player_path[:3]:
             if (col, row) in state.h_walls:
-                score += 12
+                score += 12  # horizontal wall on path
             if col > 0 and (col - 1, row) in state.v_walls:
-                score += 12
+                score += 12  # vertical wall on path
 
     return score
 
 
 def _strategic_walls(state):
+    # returns wall placements that intersect the player's path or are near the player
     player_path = _bfs_path(state, is_bot=False)
     if not player_path:
         return []
 
     walls = []
     seen = set()
+    # place walls directly on each step of the player's BFS path
     for i in range(len(player_path) - 1):
         c1, r1 = player_path[i]
         c2, r2 = player_path[i + 1]
         if r2 > r1:
+            # blocking upward movement: horizontal wall between rows
             key = ("h", c1, r1)
             if key not in seen and (c1, r1) not in state.h_walls:
                 seen.add(key)
                 walls.append(("h_wall", c1, r1))
         elif c2 > c1:
+            # blocking rightward movement: vertical wall to the right
             key = ("v", c1, r1)
             if key not in seen and (c1, r1) not in state.v_walls:
                 seen.add(key)
                 walls.append(("v_wall", c1, r1))
         elif c2 < c1:
+            # blocking leftward movement: vertical wall to the left
             key = ("v", c2, r1)
             if key not in seen and (c2, r1) not in state.v_walls:
                 seen.add(key)
                 walls.append(("v_wall", c2, r1))
 
+    # also consider any wall within 2 squares of the player (crowding strategy)
     for col in range(6):
         for row in range(5):
             key = ("h", col, row)
@@ -406,20 +452,25 @@ def _strategic_walls(state):
     return walls
 
 
-def pick_action_hard(state, verbose=True):
+def pick_action_hard(state):
+    # 1-ply minimax: for each bot move, simulate all player responses, pick the move
+    # that maximizes the worst-case evaluation score
     moves = []
     for m in state.legal_moves(nearby_only=True):
         if m[0] in ("up", "down", "left", "right"):
             moves.append(m)
 
+    # add strategic walls that block player's path
     if state.b_sticks > 0:
         moves.extend(_strategic_walls(state))
 
+    # add nearby destroy moves
     if state.b_destroys > 0:
         for m in state.legal_moves(nearby_only=True):
             if m[0] in ("destroy_h", "destroy_v"):
                 moves.append(m)
 
+    # fallback: all legal moves if candidate list is empty
     if not moves:
         moves = state.legal_moves(nearby_only=True)
     if not moves:
@@ -429,12 +480,14 @@ def pick_action_hard(state, verbose=True):
     best_score = -999999
 
     for move in moves:
-        after_bot = state.apply(move)
+        after_bot = state.apply(move)  # what board looks like after bot moves
         player_moves = after_bot.legal_moves(nearby_only=True)
 
         if not player_moves:
+            # player has no response - this is excellent for bot
             score = _evaluate_state(after_bot) + 500
         else:
+            # find the player's best (worst for bot) response
             worst_for_bot = 999999
             for pmove in player_moves:
                 after_player = after_bot.apply(pmove)
@@ -447,14 +500,11 @@ def pick_action_hard(state, verbose=True):
             best_score = score
             best_move = move
 
-    if verbose:
-        print(f"DEBUG:  hard from {_format_position(state.b_col, state.b_row)}: "
-              f"best is {_format_move(best_move)} (score={best_score})")
-
     return best_move
 
 
-def pick_action_easy(state, verbose=True):
+def pick_action_easy(state):
+    # random weighted selection: prefers movement, then walls, then destroys
     moves = state.legal_moves(nearby_only=True)
     if not moves:
         return None
@@ -464,17 +514,13 @@ def pick_action_easy(state, verbose=True):
     destroy_moves = [m for m in moves if m[0] in ("destroy_h", "destroy_v")]
 
     if random.random() < 0.35 and dir_moves:
-        move = choice(dir_moves)
+        move = choice(dir_moves)  # 35% chance to just move
     elif random.random() < 0.5 and wall_moves and state.b_sticks > 0:
-        move = choice(wall_moves)
+        move = choice(wall_moves)  # 32.5% chance to place wall
     elif destroy_moves and state.b_destroys > 0:
-        move = choice(destroy_moves)
+        move = choice(destroy_moves)  # destroy if available
     else:
         move = choice(moves)
-
-    if verbose:
-        print(f"DEBUG:  easy from {_format_position(state.b_col, state.b_row)}: "
-              f"{_format_move(move)}")
 
     return move
 
@@ -482,6 +528,7 @@ def pick_action_easy(state, verbose=True):
 pick_action_blocker = pick_action_hard
 
 
+# --- Window and canvas setup ---
 root = tk.Tk()
 
 WIDTH = root.winfo_screenwidth()
@@ -506,20 +553,25 @@ WIDTH -= 200
 
 SPRITE_SIZE = 64
 
+# --- Main game board class ---
 class Board:
     def __init__(self):
+        # grid geometry
         self.square_height = HEIGHT // 6
         self.square_width = WIDTH // 6
-        self.board_data = {}
-        self.check_who = True
+        self.board_data = {}  # maps notation (e.g. "C1") -> (x, y, occupant)
+        self.check_who = True  # True=checking player, False=checking bot (alternating)
         self.won = False
+        # piece direction tracking for sprite selection
         self.player_last_dir = "down"
         self.bot_last_dir = "down"
+        # wall resources
         self.sticks_left = 4
         self.bot_sticks_left = 4
-        self.horizontal_walls = set()
+        self.horizontal_walls = set()  # stored as (col_letter, row_number)
         self.vertical_walls = set()
-        self.tick = 0
+        self.tick = 0  # animation frame counter
+        # ambient snake decorations
         self.snakes = []
         snake_colors = ["#2E5A3A", "#3D4A2A", "#1A4A4A", "#3A2A4A"]
         for i in range(2):
@@ -539,6 +591,7 @@ class Board:
                 "tags": f"snake_{i}",
                 "history": []
             })
+        # ambient firefly particles
         self.fireflies = []
         for _ in range(18):
             self.fireflies.append({
@@ -555,6 +608,7 @@ class Board:
             img = img.resize((SPRITE_SIZE, SPRITE_SIZE), Image.LANCZOS)
             return ImageTk.PhotoImage(img)
 
+        # load 4-directional sprites for player and bot
         self.player_sprites = {
             "up":    load_sprite("Back.png"),
             "down":  load_sprite("Front.png"),
@@ -571,18 +625,20 @@ class Board:
             "closed": load_sprite("chest.png"),
             "open":   load_sprite("chest-open.png"),
         }
+        # chests: randomly placed on the board, award power-ups when collected
         self.chests = {}
         self.vanishing_chests = []
         self._place_chests()
+        # power-up lists for player and bot
         self.player_powerups = []
         self.bot_powerups = []
-        self.wall_colors = {}
+        self.wall_colors = {}  # maps ("h"/"v", col_letter, row) -> color string
         self.player_destroys = 2
         self.bot_destroys = 2
-        self._instr_shown = False
-        self.player_turn = True
+        self._instr_shown = False  # instructions overlay toggle
+        self.player_turn = True  # True=player can act, False=waiting for bot
         self.win_frame = 0
-        self.win_type = None
+        self.win_type = None  # "player" or "bot"
         self.win_particles = []
         self.bot_move_log = ""
         self.difficulty = "hard"
@@ -637,6 +693,7 @@ class Board:
         return f"{chr(column_letter+1)}{row_digit}"
 
     def draw_player(self, is_player: bool, current: str, target: str, direction: str = None):
+        # move piece sprite from current square to target, update board data
         x, y, _ = self.board_data[current]
         x2, y2, _ = self.board_data[target]
 
@@ -653,10 +710,12 @@ class Board:
             canvas.delete("bot")
             canvas.create_image(x2, y2, image=sprite, anchor="center", tags="bot")
 
+        # clear old square, mark new square as occupied
         self.board_data[current] = (x, y, None)
         self.board_data[target] = (x2, y2, is_player)
 
     def show_notation(self):
+        # overlay chess notation labels (A6–F1) on each square for reference
         start = "A6"
         for _ in range(6):
             for _ in range(6):
@@ -666,6 +725,7 @@ class Board:
                 start = self.__progression(start)
 
     def _place_chests(self):
+        # randomly place 3-4 chests on rows 2-5 (avoiding starting rows)
         available = []
         for col in ["A", "B", "C", "D", "E", "F"]:
             for row in range(2, 6):
@@ -676,6 +736,7 @@ class Board:
             self.chests[square] = "closed"
 
     def draw_chests(self):
+        # render all chest sprites and keep them below player/bot pieces
         canvas.delete("chest")
         for square, state in self.chests.items():
             data = self.board_data.get(square)
@@ -747,7 +808,6 @@ class Board:
 
     def _award_powerup(self, is_player):
         powerup = choice(["extra_stick", "erase_stick", "split", "maze"])
-        print(f"DEBUG: awarded powerup '{powerup}' to {'player' if is_player else 'bot'}")
 
         if is_player:
             self.player_powerups.append(powerup)
@@ -873,7 +933,6 @@ class Board:
                 else:
                     state.v_walls.remove((col, row))
 
-        print(f"DEBUG: maze activated — {placed} walls placed out of {len(candidates)} candidates")
 
     def _redraw_all_walls(self):
         canvas.delete("wall")
@@ -1051,16 +1110,19 @@ class Board:
             canvas.create_oval(x1 - 1, y1 - 1, x1 + 1, y1 + 1,
                          fill="#8BC34A", outline="", tags="tile_detail")
 
+    # --- Board rendering ---
     def draw_board(self):
+        # render the 6x6 grid with jungle tiles and store center coordinates
         pad = 5
         canvas.create_rectangle(-pad, -pad, WIDTH + pad, HEIGHT + pad,
                           fill="#0B3D0B", outline="#071F05", tags="board_border")
         canvas.create_rectangle(0, 0, WIDTH, HEIGHT,
                           fill="", outline="#1A5C1A", width=2, tags="board_border")
 
-        current = "A6"
+        current = "A6"  # start at top-left in chess notation
         for i in range(6):
             for x in range(6):
+                # checkerboard pattern: alternate between two green shades
                 is_dark = (x + i) % 2 == 0
                 if is_dark:
                     base = "#2E4A1E"
@@ -1077,13 +1139,16 @@ class Board:
                     fill=base, outline="#1A2E0C", tags="square"
                 )
 
+                # random grass blades, dirt spots, and moss dots per tile
                 self._draw_tile_texture(x1, y1, self.square_width, self.square_height, dark)
 
+                # store center coordinate for this square (used for piece placement)
                 x_center = x1 + self.square_width // 2
                 y_center = y1 + self.square_height // 2
                 self.board_data[current] = (x_center, y_center, None)
-                current = self.__progression(current)
+                current = self.__progression(current)  # next square in notation order
 
+    # --- Jungle background decorations ---
     def draw_jungle_ambient(self):
         for i in range(10):
             x = randint(10, WIDTH - 10)
@@ -1128,6 +1193,7 @@ class Board:
         canvas.tag_lower("bg_foliage")
         canvas.tag_lower("board_border")
 
+    # --- Animation loop (fireflies, snakes, win effects) ---
     def animate_jungle(self):
         if self.won:
             self._animate_win()
@@ -1266,52 +1332,57 @@ class Board:
 
         canvas.after(50, self.animate_jungle)
 
+    # --- Movement and collision ---
     def validate_move(self, command: str, is_player: bool):
+        # check if a directional move is legal; if so, move the piece and handle chests
         location = self.__piece_location(is_player)
         if location is None or self.won:
-            return 1
+            return 1  # invalid - no piece or game over
 
         col = location[0]
         row = int(location[1])
         direction = command.lower()
         target = None
 
+        # each direction: check bounds, then check for wall blocking the path
         if direction == "up":
             if row == 6:
-                return 1
+                return 1  # at top edge
             if (col, row) in self.horizontal_walls: 
-                return 1
+                return 1  # horizontal wall blocks upward movement
             
             target = f"{col}{row+1}"
         elif direction == "down":
             if row == 1:
-                return 1
+                return 1  # at bottom edge
             if (col, row-1) in self.horizontal_walls: 
-                return 1
+                return 1  # horizontal wall blocks downward movement
             
             target = f"{col}{row-1}"
         elif direction == "left":
             if col == "A":
-                return 1
+                return 1  # at left edge
             prev_col = chr(ord(col)-1)
             if (prev_col, row) in self.vertical_walls:
-                return 1
+                return 1  # vertical wall blocks leftward movement
             
             target = f"{prev_col}{row}"
         elif direction == "right":
             if col == "F": 
-                return 1
+                return 1  # at right edge
             if (col, row) in self.vertical_walls: 
-                return 1
+                return 1  # vertical wall blocks rightward movement
             target = f"{chr(ord(col)+1)}{row}"
         else:
             return 1
 
         x, y, piece = self.board_data[target]
         if piece is not None:
-            return 1
+            return 1  # target square occupied
 
+        # execute the move on canvas
         self.draw_player(is_player, location, target, direction)
+        # check if the target had a chest - collect it
         if target in self.chests and self.chests[target] == "closed":
             data = self.board_data.get(target)
             if data:
@@ -1324,14 +1395,13 @@ class Board:
                 })
             del self.chests[target]
             self.draw_chests()
-            if is_player:
-                print("DEBUG: Player touches chest")
-            else:
-                print("DEBUG: Bot touches chest")
             self._award_powerup(is_player)
-        return 0
+        return 0  # success
 
+    # --- Win/loss detection ---
     def check_win(self):
+        # alternating check: player on even calls, bot on odd calls
+        # player wins when row "6" reached, bot wins when row "1" reached
         location = self.__piece_location(self.check_who)
         if location is None:
             if not self.won:
@@ -1358,13 +1428,14 @@ class Board:
             root.after(50, self.check_win)
 
     def _draw_win_screen(self):
+        # overlay the entire canvas with a victory/defeat screen and "Play Again" button
         is_win = self.win_type == "player"
         canvas_width = WIDTH + 200
 
         if is_win:
-            overlay = "#0A1F05"
+            overlay = "#0A1F05"  # dark green for victory
         else:
-            overlay = "#1F0505"
+            overlay = "#1F0505"  # dark red for defeat
         canvas.create_rectangle(0, 0, canvas_width, HEIGHT, fill=overlay, tags="win_overlay")
 
         if is_win:
@@ -1404,6 +1475,7 @@ class Board:
 
         canvas.bind("<Button-1>", self._on_win_click)
 
+        # particle effects: celebratory confetti or falling embers
         self.win_particles = []
         if is_win:
             count = 50
@@ -1412,15 +1484,15 @@ class Board:
         for _ in range(count):
             if is_win:
                 colors = ["#FF5252", "#FFEB3B", "#00BCD4", "#E040FB", "#FFD700", "#4CAF50", "#FF9800"]
-                y_start = randint(-HEIGHT, 0)
+                y_start = randint(-HEIGHT, 0)  # start above screen, fall down
                 speed_x = uniform(-2, 2)
                 speed_y = uniform(2, 5)
                 size = randint(3, 7)
             else:
                 colors = ["#8B0000", "#660000", "#CC3333", "#440000", "#992222"]
-                y_start = randint(0, HEIGHT)
+                y_start = randint(0, HEIGHT)  # start anywhere, drift up
                 speed_x = uniform(-0.5, 0.5)
-                speed_y = uniform(-1, -0.3)
+                speed_y = uniform(-1, -0.3)  # upward (negative y)
                 size = randint(2, 5)
             self.win_particles.append({
                 "x": randint(0, canvas_width),
@@ -1475,6 +1547,7 @@ class Board:
                               fill=p["color"], outline="", tags=p["tag"])
 
     def _build_ml_state(self):
+        # convert Board state into a GameState for AI simulation
         state = GameState()
         player_location = self.__piece_location(True)
         if player_location:
@@ -1496,20 +1569,18 @@ class Board:
         return state
 
     def _blocker_pick_action(self):
+        # run AI to pick bot's move and apply it to the board
         state = self._build_ml_state()
         if self.difficulty == "easy":
-            move = pick_action_easy(state, verbose=True)
+            move = pick_action_easy(state)
         else:
-            move = pick_action_hard(state, verbose=True)
+            move = pick_action_hard(state)
         if move is None:
-            print("DEBUG:  blocker: no move returned")
             return False
 
         kind = move[0]
         if kind in ("up", "down", "left", "right"):
             ok = self.validate_move(kind, False) == 0
-            if not ok:
-                print(f"DEBUG:  blocker: invalid move {kind}")
             return ok
         elif kind == "h_wall":
             wall_column, wall_row = move[1], move[2]
@@ -1567,6 +1638,7 @@ class Board:
             return False
         return False
 
+    # --- Bot turn ---
     def bot(self):
         if self.won:
             return
@@ -1577,6 +1649,7 @@ class Board:
         self.player_turn = True
 
     def on_mouse_click(self, event):
+        # handle player wall placement - click near a grid edge to place a vine there
         if self.won or self.sticks_left <= 0 or not self.player_turn:
             return
         
@@ -1584,8 +1657,9 @@ class Board:
         grid_y = event.y // self.square_height
         
         if grid_x >= 6 or grid_y >= 6 or grid_x < 0 or grid_y < 0:
-            return
+            return  # click outside the board
         
+        # find which edge of the grid square was clicked (top/bottom/left/right)
         dist_left = event.x - (grid_x * self.square_width)
         dist_right = ((grid_x + 1) * self.square_width) - event.x
         dist_top = event.y - (grid_y * self.square_height)
@@ -1593,10 +1667,11 @@ class Board:
         min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
         placed = False
+        # horizontal wall: clicked near top or bottom edge of a square
         if min_dist in (dist_top, dist_bottom):
             center_y = grid_y * self.square_height + self.square_height // 2
             if event.y < center_y:
-                wall_row = 6 - grid_y
+                wall_row = 6 - grid_y  # top edge of square
                 if wall_row < 6:
                     wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
@@ -1606,7 +1681,7 @@ class Board:
                         self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
             else:
-                wall_row = 5 - grid_y
+                wall_row = 5 - grid_y  # bottom edge of square
                 if wall_row >= 1:
                     wall = (chr(ord('A') + grid_x), wall_row)
                     if wall not in self.horizontal_walls:
@@ -1615,12 +1690,13 @@ class Board:
                         line_y = (grid_y + 1) * self.square_height
                         self.draw_vine(grid_x * self.square_width, line_y, (grid_x + 1) * self.square_width, line_y, "#4CAF50")
                         placed = True
+        # vertical wall: clicked near left or right edge of a square
         else:
             center_x = grid_x * self.square_width + self.square_width // 2
             row_str = 6 - grid_y
             if event.x < center_x:
                 if grid_x > 0:
-                    wall = (chr(ord('A') + grid_x - 1), row_str)
+                    wall = (chr(ord('A') + grid_x - 1), row_str)  # left edge of square
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         self.wall_colors[("v", wall[0], wall[1])] = "#4CAF50"
@@ -1629,7 +1705,7 @@ class Board:
                         placed = True
             else:
                 if grid_x < 5:
-                    wall = (chr(ord('A') + grid_x), row_str)
+                    wall = (chr(ord('A') + grid_x), row_str)  # right edge of square
                     if wall not in self.vertical_walls:
                         self.vertical_walls.add(wall)
                         self.wall_colors[("v", wall[0], wall[1])] = "#4CAF50"
@@ -1642,6 +1718,7 @@ class Board:
             canvas.itemconfigure("sticksval", text=str(self.sticks_left))
             self.player_turn = False
 
+    # --- Player input ---
     def onplayerclick(self, event):
         if not self.player_turn:
             return
@@ -1650,15 +1727,18 @@ class Board:
             if self.validate_move(key, True) == 0:
                 self.player_turn = False
 
+    # --- Start screen and menu ---
     def _draw_start_screen(self):
+        # full-screen jungle menu with hanging vines, title, and buttons
         canvas.delete("menu")
         canvas.delete("instructions_overlay")
 
-        c1 = WIDTH + 200
-        c2 = c1 // 2
+        c1 = WIDTH + 200  # total canvas width
+        c2 = c1 // 2  # horizontal center
         canvas.create_rectangle(0, 0, c1, HEIGHT,
                                fill="#0A1A08", tags="menu")
 
+        # hanging vine decorations at top
         for i in range(6):
             x = randint(20, c1 - 20)
             vine_len = randint(80, 160)
@@ -1668,7 +1748,7 @@ class Board:
                 sway = math.sin(t * math.pi * 3) * 15 * t
                 l1.extend([x + sway, -10 + vine_len * t])
             canvas.create_line(*l1, fill="#1B5E20", width=3, smooth=True, tags="menu")
-            l2, l3 = l1[-2], l1[-1]
+            l2, l3 = l1[-2], l1[-1]  # vine tip coordinates
             for _ in range(2):
                 self._draw_leaf_shape(
                     l2 + randint(-8, 8), l3 - 5,
@@ -1746,8 +1826,9 @@ class Board:
                              fill="#1B5E20", outline="#0B3D0B", tags="menu")
 
     def _on_menu_click(self, event):
+        # handle clicks on start screen buttons: easy, hard, how to play
         if self._instr_shown:
-            self._toggle_instructions()
+            self._toggle_instructions()  # close instructions if open
             return
         x, y = event.x, event.y
         x1, y1, x2, y2 = self.easy_btn
@@ -1763,18 +1844,21 @@ class Board:
             self._toggle_instructions()
 
     def _toggle_instructions(self):
+        # toggle the instructions overlay (close if open, open if closed)
         if self._instr_shown:
             canvas.delete("instructions_overlay")
             self._instr_shown = False
             return
         self._instr_shown = True
-        cx = (WIDTH + 200) // 2
+        cx = (WIDTH + 200) // 2  # center x of total canvas
         cw = WIDTH + 200
 
+        # outer border with vine-like outline
         canvas.create_rectangle(10, 10, cw - 10, HEIGHT - 10,
                                fill="#0A1A08", outline="#2E7D32", width=4,
                                tags="instructions_overlay")
 
+        # inner inset panel
         inner = (60, 60, cw - 60, HEIGHT - 60)
         canvas.create_rectangle(*inner, fill="#0D1F0A", outline="#1B5E20",
                                 width=2, tags="instructions_overlay")
@@ -1800,6 +1884,7 @@ class Board:
         canvas.create_line(cx - 140, ty + 45, cx + 140, ty + 45,
                           fill="#1B5E20", width=1, tags="instructions_overlay")
 
+        # instruction sections: movement, vines, goal
         sections = [
             ("Movement", ["Use ARROW KEYS to move your character."], "#FF9800"),
             ("Vines", ["Click grid EDGES to place vines.", "Right-click a vine to destroy it."], "#4CAF50"),
@@ -1829,6 +1914,7 @@ class Board:
 
             s1 += 16
 
+        # chest power-ups section with colored symbol indicators
         s1 += 6
         canvas.create_line(cx - 130, s1, cx + 130, s1,
                           fill="#1B5E20", width=1, tags="instructions_overlay")
@@ -1853,6 +1939,7 @@ class Board:
             canvas.create_text(x1 + 22, s1, text=desc, font=("Helvetica", 14),
                               fill="#CCE5CC", anchor="w", tags="instructions_overlay")
 
+        # close hint at bottom
         s2 = HEIGHT - 55
         canvas.create_line(cx - 100, s2, cx + 100, s2,
                           fill="#1B5E20", width=1, tags="instructions_overlay")
@@ -1860,30 +1947,34 @@ class Board:
                           font=("Helvetica", 14, "italic"), fill="#8BC34A",
                           tags="instructions_overlay")
 
+    # --- Start game, restart, and main loop ---
     def _start_game(self, difficulty="hard"):
+        # transition from menu to the game board, bind controls
         self.difficulty = difficulty
         canvas.delete("menu")
         canvas.delete("instructions_overlay")
         self.show_notation()
-        self.draw_player(True, "C1", "C1", "down")
-        self.draw_player(False, "D6", "D6", "down")
+        self.draw_player(True, "C1", "C1", "down")  # player at bottom
+        self.draw_player(False, "D6", "D6", "down")  # bot at top
         self.draw_chests()
-        self.rightside()
-        self.bot()
-        self.check_win()
-        root.bind("<Key>", self.onplayerclick)
-        canvas.bind("<Button-1>", self.on_mouse_click)
-        canvas.bind("<Button-3>", self._destroy_wall)
+        self.rightside()  # power-ups info panel
+        self.bot()  # start bot turn loop
+        self.check_win()  # start win-check loop
+        root.bind("<Key>", self.onplayerclick)  # arrow key movement
+        canvas.bind("<Button-1>", self.on_mouse_click)  # wall placement
+        canvas.bind("<Button-3>", self._destroy_wall)  # wall destruction
         canvas.focus_set()
 
 
     def _on_win_click(self, event):
+        # check if "Play Again" button was clicked and restart
         x, y = event.x, event.y
         x1, y1, x2, y2 = self.restart_btn
         if x1 <= x <= x2 and y1 <= y <= y2:
             self._restart()
 
     def _restart(self):
+        # clean full restart: unbind events, reset Board, return to menu
         canvas.unbind("<Button-1>")
         canvas.unbind("<Button-3>")
         canvas.unbind("<Key>")
@@ -1897,6 +1988,7 @@ class Board:
 
 
 def RunGame():
+    # entry point: create board, draw everything, start main loop
     board = Board()
     board.draw_board()
     board.draw_jungle_ambient()
