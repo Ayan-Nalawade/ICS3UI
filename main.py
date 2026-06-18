@@ -1805,29 +1805,38 @@ class Board:
             ("Vines", ["Click grid EDGES to place vines.", "Right-click a vine to destroy it."], "#4CAF50"),
             ("Goal", ["Reach the bottom before the bot", "reaches the top. Block it with vines."], "#00BCD4"),
         ]
-        s1 = ty + 75
+        s1 = ty + 65
         for title, body_lines, color in sections:
-            x = cx - 15
-            canvas.create_oval(x - 5, s1 - 5, x + 5, s1 + 5, fill=color,
-                              outline="", tags="instructions_overlay")
-            canvas.create_text(x - 18, s1, text=title,
-                              font=("Helvetica", 16, "bold"), fill=color,
-                              anchor="e", tags="instructions_overlay")
-            for line in body_lines:
-                s1 += 22
-                canvas.create_text(cx, s1, text=line,
-                                  font=("Helvetica", 14), fill="#CCE5CC",
-                                  tags="instructions_overlay")
-            s1 += 28
+            canvas.create_text(
+                cx, s1,
+                text=title,
+                font=("Helvetica", 16, "bold"),
+                fill=color,
+                tags="instructions_overlay"
+            )
 
-        s1 += 12
+            s1 += 18
+
+            for line in body_lines:
+                canvas.create_text(
+                    cx, s1,
+                    text=line,
+                    font=("Helvetica", 14),
+                    fill="#CCE5CC",
+                    tags="instructions_overlay"
+                )
+                s1 += 18
+
+            s1 += 16
+
+        s1 += 6
         canvas.create_line(cx - 130, s1, cx + 130, s1,
                           fill="#1B5E20", width=1, tags="instructions_overlay")
-        s1 += 28
+        s1 += 20
         canvas.create_text(cx, s1, text="CHEST POWER-UPS",
                           font=("Helvetica", 16, "bold"), fill="#FFD700",
                           tags="instructions_overlay")
-        s1 += 36
+        s1 += 26
         pups = [
             ("+", "Extra vine", "#4CAF50"),
             ("-", "Erase all vines", "#F44336"),
@@ -1836,7 +1845,7 @@ class Board:
         ]
         x1 = cx - 130
         for sym, desc, color in pups:
-            s1 += 30
+            s1 += 25
             canvas.create_oval(x1 - 10, s1 - 10, x1 + 10, s1 + 10,
                               fill=color, outline="", tags="instructions_overlay")
             canvas.create_text(x1, s1, text=sym, font=("Helvetica", 13, "bold"),
