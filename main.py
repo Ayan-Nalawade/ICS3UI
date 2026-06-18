@@ -2,6 +2,8 @@
 # Jungle Run - A Python Game #
 # Developed by Ayan          #
 ##############################
+# Used Gemini to make the character sprites using Image gen
+# As part of the 1 AI feature allowed
 import tkinter as tk
 import random
 import sys
@@ -484,14 +486,15 @@ root = tk.Tk()
 
 WIDTH = root.winfo_screenwidth()
 HEIGHT = root.winfo_screenheight()
+print(f"{HEIGHT}x{WIDTH}")
 if WIDTH > 1000: 
-    WIDTH = 1000
+    WIDTH = 912
 if HEIGHT > 1000: 
-    HEIGHT = 1000
+    HEIGHT = 662
 if WIDTH < 300: 
-    WIDTH = 600
+    WIDTH = 912
     print("Please resize WIDTH")
-if HEIGHT < 300: 
+if HEIGHT < 662: 
     HEIGHT = 600
     print("Please resize HEIGHT")
 
@@ -1387,6 +1390,20 @@ class Board:
         canvas.create_text(x1, y1 + 60, text=subtitle,
                       font=("Helvetica", 20), fill="#CCCCCC", tags="win_subtitle")
 
+        btn_w, btn_h = 240, 56
+        ry = y1 + 120
+        self.restart_btn = (x1 - btn_w // 2, ry, x1 + btn_w // 2, ry + btn_h)
+        canvas.create_rectangle(*self.restart_btn, fill="#1B5E20", outline="#4CAF50",
+                               width=3, tags="win_overlay")
+        for side in [-1, 1]:
+            bx = x1 + side * (btn_w // 2 + 4)
+            by = ry + btn_h // 2
+            self._draw_leaf_shape(bx, by, 90 if side < 0 else -90, 14, "#388E3C", "#0B3D0B", tag="win_overlay")
+        canvas.create_text(x1, ry + btn_h // 2, text="Play Again",
+                          font=("Helvetica", 22, "bold"), fill="white", tags="win_overlay")
+
+        canvas.bind("<Button-1>", self._on_win_click)
+
         self.win_particles = []
         if is_win:
             count = 50
@@ -1849,6 +1866,25 @@ class Board:
         canvas.bind("<Button-1>", self.on_mouse_click)
         canvas.bind("<Button-3>", self._destroy_wall)
         canvas.focus_set()
+
+
+    def _on_win_click(self, event):
+        x, y = event.x, event.y
+        x1, y1, x2, y2 = self.restart_btn
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            self._restart()
+
+    def _restart(self):
+        canvas.unbind("<Button-1>")
+        canvas.unbind("<Button-3>")
+        canvas.unbind("<Key>")
+        canvas.delete("all")
+        self.__init__()
+        self.draw_board()
+        self.draw_jungle_ambient()
+        self._draw_start_screen()
+        self.animate_jungle()
+        canvas.bind("<Button-1>", self._on_menu_click)
 
 
 def RunGame():
